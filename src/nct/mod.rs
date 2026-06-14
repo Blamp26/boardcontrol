@@ -1,6 +1,7 @@
 pub mod allowlist;
 pub mod rmw;
 pub mod sequence;
+pub mod superio;
 pub mod types;
 
 use crate::backend::Backend;

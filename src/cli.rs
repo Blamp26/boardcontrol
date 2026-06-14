@@ -1,7 +1,10 @@
 use crate::backend::trace::{TraceBackend, TraceEvent};
 use crate::board::profile_for;
 use crate::error::{Error, Result};
+use crate::linux::dev_port::DevPort;
+use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::run_sequence;
+use crate::nct::superio::read_nct6779d_chip_id;
 
 pub fn run() -> Result<()> {
     run_from(std::env::args().skip(1))
@@ -52,6 +55,10 @@ where
         return Err(Error::InvalidArgs(help()));
     };
 
+    if subcommand == "detect-chip" {
+        return handle_detect_chip(args);
+    }
+
     let mut dry_run = false;
     for arg in args {
         match arg.as_str() {
@@ -93,10 +100,60 @@ where
     Ok(())
 }
 
+fn handle_detect_chip<I>(mut args: I) -> Result<()>
+where
+    I: Iterator<Item = String>,
+{
+    let mut backend = None;
+    let mut confirm_read = false;
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--backend" => backend = args.next(),
+            "--confirm-read" => confirm_read = true,
+            _ => return Err(Error::InvalidArgs(help())),
+        }
+    }
+
+    if !confirm_read {
+        return Err(Error::InvalidArgs(
+            "detect-chip requires --confirm-read".to_string(),
+        ));
+    }
+
+    let backend = backend.ok_or_else(|| Error::InvalidArgs(help()))?;
+    if backend != "dev-port" {
+        return Err(Error::InvalidArgs(
+            "detect-chip currently supports only --backend dev-port".to_string(),
+        ));
+    }
+
+    if !superio_ports_available()? {
+        return Err(Error::InvalidArgs(
+            "/proc/ioports reports 004e-004f as busy".to_string(),
+        ));
+    }
+
+    let mut port = DevPort::open()?;
+    let chip_id = read_nct6779d_chip_id(&mut port)?;
+    println!(
+        "NCT chip id_high=0x{:02X} revision=0x{:02X}",
+        chip_id.id_high, chip_id.revision
+    );
+    if chip_id.is_nct6779d() {
+        println!("Detected: NCT6779D");
+    } else {
+        println!("Detected: unsupported Super I/O");
+    }
+
+    Ok(())
+}
+
 fn help() -> String {
     [
         "usage:",
         "  msi-ml detect --board 7A45",
+        "  msi-ml nct detect-chip --backend dev-port --confirm-read",
         "  msi-ml nct init-7a45 --dry-run",
         "  msi-ml nct reset-led --dry-run",
     ]

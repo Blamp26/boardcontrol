@@ -83,12 +83,20 @@ cargo clippy -- -D warnings
 - [x] Trace-only Rust CLI MVP
 - [x] 7A45 NCT init/reset sequence model
 - [x] Safe RMW allowlist tests
-- [ ] Linux `/dev/port` backend for NCT6779D
-- [ ] NCT6779D chip ID detection
+- [ ] Linux read-only NCT6779D chip detection
+- [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [ ] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend
 - [ ] Renesas RGB/mode mapping
 - [ ] Windows backend
+
+## Experimental Read-Only Hardware Detection
+
+```bash
+cargo run -- nct detect-chip --backend dev-port --confirm-read
+```
+
+This command only performs Super I/O config-mode register reads for chip identification. It does not execute LED init/reset writes.
 
 ## Legal / Project Note
 

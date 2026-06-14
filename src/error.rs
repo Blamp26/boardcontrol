@@ -4,6 +4,9 @@ use std::fmt;
 pub enum Error {
     InvalidArgs(String),
     UnsupportedBoard(String),
+    ProcIoportsReadFailed(String),
+    DevPortOpenFailed(String),
+    DevPortIoFailed(String),
     SequenceBlocked {
         ldn: u8,
         reg: u8,
@@ -25,6 +28,11 @@ impl fmt::Display for Error {
         match self {
             Error::InvalidArgs(msg) => write!(f, "invalid args: {msg}"),
             Error::UnsupportedBoard(board) => write!(f, "unsupported board: {board}"),
+            Error::ProcIoportsReadFailed(msg) => {
+                write!(f, "failed to read /proc/ioports: {msg}")
+            }
+            Error::DevPortOpenFailed(msg) => write!(f, "failed to open /dev/port: {msg}"),
+            Error::DevPortIoFailed(msg) => write!(f, "dev/port I/O error: {msg}"),
             Error::SequenceBlocked {
                 ldn,
                 reg,
