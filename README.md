@@ -105,6 +105,7 @@ cargo run -- nct plan-reset-led
 
 `--dry-run` commands print a planning report first and then execute the same sequence against `TraceBackend`.
 The plan commands only calculate RMW reports and do not mutate even the trace backend.
+Safe CI smoke tests cover only trace/planning commands and do not access hardware.
 
 ## Test Commands
 

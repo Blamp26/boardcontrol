@@ -27,3 +27,10 @@ jobs:
 
       - name: Clippy
         run: cargo clippy -- -D warnings
+
+      - name: Safe CLI smoke tests
+        run: |
+          cargo run -- nct plan-init-7a45
+          cargo run -- nct plan-reset-led
+          cargo run -- nct init-7a45 --dry-run
+          cargo run -- nct reset-led --dry-run
