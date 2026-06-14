@@ -16,6 +16,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 
 - [Knowledge Map](docs/KNOWLEDGE_MAP.md) - architecture, hardware paths, register map, and safety model.
 - [Safety Model](docs/SAFETY.md) - safety rules, preflight gates, and write policy.
+- [Controlled Write Design](docs/CONTROLLED_WRITE_DESIGN.md) - planned gated design for future NCT hardware writes.
 
 ## Project Map
 
