@@ -18,6 +18,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [Safety Model](docs/SAFETY.md) - safety rules, preflight gates, and write policy.
 - [Controlled Write Design](docs/CONTROLLED_WRITE_DESIGN.md) - planned gated design for future NCT hardware writes.
 - [Tested Environments](docs/TESTED_ENVIRONMENTS.md) - known safe regression results and target test status.
+- [MSI 7A45 Read-Only Test Plan](docs/MSI_7A45_READONLY_TEST_PLAN.md) - first real-target read-only validation checklist.
 
 ## Project Map
 
