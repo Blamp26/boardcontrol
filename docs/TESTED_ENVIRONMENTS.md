@@ -103,6 +103,8 @@ Safe regression result:
 
 - `cargo run -- doctor` blocked hardware-read preflight as expected.
 
+Code now recognizes this DMI as `looks_like_msi_7e75 = true`, but hardware access remains blocked because no 7E75 hardware profile exists yet.
+
 No hardware-read commands were run on this host.
 
 Commands intentionally not run:

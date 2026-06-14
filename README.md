@@ -19,6 +19,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [Controlled Write Design](docs/CONTROLLED_WRITE_DESIGN.md) - planned gated design for future NCT hardware writes.
 - [Tested Environments](docs/TESTED_ENVIRONMENTS.md) - known safe regression results and target test status.
 - [MSI 7A45 Read-Only Test Plan](docs/MSI_7A45_READONLY_TEST_PLAN.md) - first real-target read-only validation checklist.
+- [MSI MS-7E75 Research Notes](docs/MSI_7E75_RESEARCH.md) - research-only notes for B850 GAMING PLUS WIFI PZ.
 
 ## Project Map
 
@@ -127,6 +128,7 @@ cargo clippy -- -D warnings
 - [x] Linux read-only allowlisted NCT register reads
 - [x] Safe doctor/preflight diagnostics
 - [x] RMW planning/report layer
+- [x] MS-7E75 research-only DMI detection
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend

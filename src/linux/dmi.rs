@@ -32,6 +32,31 @@ impl DmiInfo {
 
         vendor_matches && board_matches
     }
+
+    pub fn looks_like_msi_7e75(&self) -> bool {
+        let vendor_matches = self
+            .board_vendor
+            .as_deref()
+            .map(|value| {
+                let lower = value.to_ascii_lowercase();
+                lower.contains("msi") || lower.contains("micro-star")
+            })
+            .unwrap_or(false);
+
+        let board_matches = [
+            self.board_name.as_deref(),
+            self.board_version.as_deref(),
+            self.product_name.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        .any(|value| {
+            let lower = value.to_ascii_lowercase();
+            lower.contains("7e75") || lower.contains("ms-7e75")
+        });
+
+        vendor_matches && board_matches
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,6 +161,39 @@ mod tests {
             product_name: None,
         };
         assert!(!dmi.looks_like_msi_7a45());
+    }
+
+    #[test]
+    fn msi_7e75_positive() {
+        let dmi = DmiInfo {
+            board_vendor: Some("Micro-Star International Co., Ltd.".to_string()),
+            board_name: Some("B850 GAMING PLUS WIFI PZ (MS-7E75)".to_string()),
+            board_version: None,
+            product_name: Some("MS-7E75".to_string()),
+        };
+        assert!(dmi.looks_like_msi_7e75());
+    }
+
+    #[test]
+    fn msi_7e75_negative_without_7e75() {
+        let dmi = DmiInfo {
+            board_vendor: Some("MSI".to_string()),
+            board_name: Some("7A45".to_string()),
+            board_version: None,
+            product_name: None,
+        };
+        assert!(!dmi.looks_like_msi_7e75());
+    }
+
+    #[test]
+    fn non_msi_vendor_7e75_negative() {
+        let dmi = DmiInfo {
+            board_vendor: Some("Dell".to_string()),
+            board_name: Some("MS-7E75".to_string()),
+            board_version: None,
+            product_name: None,
+        };
+        assert!(!dmi.looks_like_msi_7e75());
     }
 
     #[test]

@@ -56,6 +56,7 @@ fn handle_doctor() -> Result<()> {
         dmi.product_name.as_deref().unwrap_or("unknown")
     );
     println!("  looks_like_msi_7a45 = {}", dmi.looks_like_msi_7a45());
+    println!("  looks_like_msi_7e75 = {}", dmi.looks_like_msi_7e75());
 
     println!("/proc/ioports:");
     match &ioports_result {
