@@ -85,6 +85,7 @@ cargo clippy -- -D warnings
 - [x] 7A45 NCT init/reset sequence model
 - [x] Safe RMW allowlist tests
 - [x] Linux read-only NCT6779D chip detection
+- [x] Linux read-only allowlisted NCT register reads
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend
@@ -100,6 +101,14 @@ cargo run -- nct detect-chip --backend dev-port --confirm-read
 This command only performs Super I/O config-mode register reads for chip identification. It does not execute LED init/reset writes.
 
 Linux only. Requires permission to access `/dev/port`. The command refuses to run without `--confirm-read`.
+
+## Experimental Allowlisted Register Read
+
+```bash
+cargo run -- nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read
+```
+
+This command only reads a single allowlisted NCT6779D register for the selected board profile. It refuses unknown boards, unsupported chips, non-allowlisted registers, and runs only after explicit `--confirm-read`.
 
 ## Legal / Project Note
 

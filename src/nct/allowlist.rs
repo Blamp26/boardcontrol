@@ -20,6 +20,7 @@ mod tests {
     #[test]
     fn allowlist_matches_expected_entries() {
         assert_eq!(allowed_change_mask(0x09, 0xE0), Some(0x80));
+        assert_eq!(allowed_change_mask(0x09, 0xAA), None);
         assert_eq!(allowed_change_mask(0x0B, 0xF7), Some(0x80));
         assert_eq!(allowed_change_mask(0x01, 0x02), None);
     }

@@ -36,6 +36,22 @@ pub fn read_global_reg<P: RawPortIo>(io: &mut P, reg: u8) -> Result<u8> {
     io.read_u8(SUPERIO_DATA_PORT)
 }
 
+pub fn read_ldn_reg<P: RawPortIo>(io: &mut P, ldn: u8, reg: u8) -> Result<u8> {
+    enter_config(io)?;
+    let result = (|| {
+        io.write_u8(SUPERIO_INDEX_PORT, 0x07)?;
+        io.write_u8(SUPERIO_DATA_PORT, ldn)?;
+        io.write_u8(SUPERIO_INDEX_PORT, reg)?;
+        io.read_u8(SUPERIO_DATA_PORT)
+    })();
+    let exit_result = exit_config(io);
+    match (result, exit_result) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(err), _) => Err(err),
+        (Ok(_), Err(err)) => Err(err),
+    }
+}
+
 pub fn read_nct6779d_chip_id<P: RawPortIo>(io: &mut P) -> Result<NctChipId> {
     enter_config(io)?;
     let result = (|| {
@@ -66,12 +82,18 @@ mod tests {
     struct FakeRawPortIo {
         log: Vec<PortEvent>,
         global_regs: HashMap<u8, u8>,
+        ldn_regs: HashMap<(u8, u8), u8>,
         selected_reg: Option<u8>,
+        selected_ldn: Option<u8>,
     }
 
     impl FakeRawPortIo {
         fn set_global_reg(&mut self, reg: u8, value: u8) {
             self.global_regs.insert(reg, value);
+        }
+
+        fn set_ldn_reg(&mut self, ldn: u8, reg: u8, value: u8) {
+            self.ldn_regs.insert((ldn, reg), value);
         }
 
         fn log(&self) -> &[PortEvent] {
@@ -82,9 +104,11 @@ mod tests {
     impl RawPortIo for FakeRawPortIo {
         fn read_u8(&mut self, port: u16) -> Result<u8> {
             let value = if port == SUPERIO_DATA_PORT {
-                self.selected_reg
-                    .and_then(|reg| self.global_regs.get(&reg).copied())
-                    .unwrap_or(0)
+                match (self.selected_ldn, self.selected_reg) {
+                    (Some(ldn), Some(reg)) => self.ldn_regs.get(&(ldn, reg)).copied().unwrap_or(0),
+                    (None, Some(reg)) => self.global_regs.get(&reg).copied().unwrap_or(0),
+                    _ => 0,
+                }
             } else {
                 0
             };
@@ -99,10 +123,22 @@ mod tests {
                     0x87 | 0xAA => {
                         if value == 0xAA {
                             self.selected_reg = None;
+                            self.selected_ldn = None;
                         }
                     }
-                    _ => self.selected_reg = Some(value),
+                    0x07 => self.selected_reg = Some(value),
+                    _ => {
+                        if self.selected_reg == Some(0x07) {
+                            self.selected_ldn = Some(value);
+                            self.selected_reg = None;
+                        } else {
+                            self.selected_reg = Some(value);
+                        }
+                    }
                 }
+            } else if port == SUPERIO_DATA_PORT && self.selected_reg == Some(0x07) {
+                self.selected_ldn = Some(value);
+                self.selected_reg = None;
             }
             Ok(())
         }
@@ -151,6 +187,48 @@ mod tests {
                 PortEvent::Read {
                     port: SUPERIO_DATA_PORT,
                     value: 0xC5,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_read_ldn_reg_sequence() {
+        let mut io = FakeRawPortIo::default();
+        io.set_ldn_reg(0x09, 0xE0, 0x80);
+
+        let value = read_ldn_reg(&mut io, 0x09, 0xE0).unwrap();
+        assert_eq!(value, 0x80);
+        assert_eq!(
+            io.log(),
+            &[
+                PortEvent::Write {
+                    port: SUPERIO_INDEX_PORT,
+                    value: 0x87,
+                },
+                PortEvent::Write {
+                    port: SUPERIO_INDEX_PORT,
+                    value: 0x87,
+                },
+                PortEvent::Write {
+                    port: SUPERIO_INDEX_PORT,
+                    value: 0x07,
+                },
+                PortEvent::Write {
+                    port: SUPERIO_DATA_PORT,
+                    value: 0x09,
+                },
+                PortEvent::Write {
+                    port: SUPERIO_INDEX_PORT,
+                    value: 0xE0,
+                },
+                PortEvent::Read {
+                    port: SUPERIO_DATA_PORT,
+                    value: 0x80,
+                },
+                PortEvent::Write {
+                    port: SUPERIO_INDEX_PORT,
+                    value: 0xAA,
                 },
             ]
         );
