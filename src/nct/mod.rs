@@ -1,4 +1,5 @@
 pub mod allowlist;
+pub mod plan;
 pub mod rmw;
 pub mod sequence;
 pub mod superio;

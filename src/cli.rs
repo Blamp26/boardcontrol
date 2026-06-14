@@ -6,7 +6,9 @@ use crate::linux::dev_port_info::{dev_port_exists, dev_port_metadata_string};
 use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_dmi_info};
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
+use crate::nct::plan::{NctPlanStep, plan_sequence};
 use crate::nct::run_sequence;
+use crate::nct::sequence::{init_sequence_7a45, reset_led_sequence_7a45};
 use crate::nct::superio::read_ldn_reg;
 use crate::nct::superio::read_nct6779d_chip_id;
 
@@ -125,6 +127,12 @@ where
         return Err(Error::InvalidArgs(help()));
     };
 
+    if subcommand == "plan-init-7a45" {
+        return handle_plan(init_sequence_7a45());
+    }
+    if subcommand == "plan-reset-led" {
+        return handle_plan(reset_led_sequence_7a45());
+    }
     if subcommand == "read-reg" {
         return handle_read_reg(args);
     }
@@ -166,6 +174,35 @@ where
             }
             TraceEvent::Delay { ms } => {
                 println!("TRACE delay {ms} ms");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_plan(sequence: crate::nct::sequence::NctSequence) -> Result<()> {
+    let mut backend = TraceBackend::new();
+    let plan = plan_sequence(&mut backend, &sequence)?;
+
+    for step in plan {
+        match step {
+            NctPlanStep::Rmw(rmw) => {
+                println!(
+                    "PLAN RMW ldn=0x{ldn:02X} reg=0x{reg:02X} current=0x{current:02X} and=0x{and_mask:02X} or=0x{or_mask:02X} new=0x{new_value:02X} changed=0x{changed:02X} allowed=0x{allowed_change_mask:02X} status={status}",
+                    ldn = rmw.ldn,
+                    reg = rmw.reg,
+                    current = rmw.current,
+                    and_mask = rmw.and_mask,
+                    or_mask = rmw.or_mask,
+                    new_value = rmw.new_value,
+                    changed = rmw.changed,
+                    allowed_change_mask = rmw.allowed_change_mask,
+                    status = if rmw.allowed { "allowed" } else { "blocked" },
+                );
+            }
+            NctPlanStep::Delay(ms) => {
+                println!("PLAN delay {ms} ms");
             }
         }
     }
@@ -351,6 +388,8 @@ fn help() -> String {
         "usage:",
         "  msi-ml doctor",
         "  msi-ml detect --board 7A45",
+        "  msi-ml nct plan-init-7a45",
+        "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
         "  msi-ml nct detect-chip --backend dev-port --confirm-read",
         "  msi-ml nct init-7a45 --dry-run",

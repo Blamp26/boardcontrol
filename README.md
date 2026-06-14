@@ -39,6 +39,8 @@ flowchart LR
 
 `boardcontrol` currently implements the safe/read-only side of this map: trace simulation, DMI preflight, chip detection, and allowlisted NCT register reads. LED write/apply commands are not implemented yet.
 
+The plan commands calculate RMW reports without writing to hardware or mutating the trace backend.
+
 ## Project Status
 
 Current MVP status:
@@ -97,9 +99,11 @@ else:
 cargo run -- detect --board 7A45
 cargo run -- nct init-7a45 --dry-run
 cargo run -- nct reset-led --dry-run
+cargo run -- nct plan-init-7a45
+cargo run -- nct plan-reset-led
 ```
 
-Commands without `--dry-run` are intentionally not implemented yet.
+`init-7a45` and `reset-led` currently support only `--dry-run`.
 
 ## Test Commands
 
@@ -118,6 +122,7 @@ cargo clippy -- -D warnings
 - [x] Linux read-only NCT6779D chip detection
 - [x] Linux read-only allowlisted NCT register reads
 - [x] Safe doctor/preflight diagnostics
+- [x] RMW planning/report layer
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend
