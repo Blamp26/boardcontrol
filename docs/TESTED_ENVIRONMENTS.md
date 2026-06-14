@@ -78,6 +78,44 @@ cargo run -- nct detect-chip --backend dev-port --confirm-read
 cargo run -- nct read-reg ...
 ```
 
+## MSI B850 GAMING PLUS WIFI PZ / Fedora Live
+
+Status: MSI-branded host, but non-target board, correctly blocked.
+
+Observed DMI:
+
+```text
+board_vendor = Micro-Star International Co., Ltd.
+board_name = B850 GAMING PLUS WIFI PZ (MS-7E75)
+board_version = 1.0
+product_name = MS-7E75
+looks_like_msi_7a45 = false
+```
+
+Observed preflight result:
+
+```text
+Hardware read preflight: BLOCKED
+Reason: host DMI does not look like MSI 7A45: vendor=Micro-Star International Co., Ltd. board=B850 GAMING PLUS WIFI PZ (MS-7E75) product=MS-7E75
+```
+
+Safe regression result:
+
+- `cargo run -- doctor` blocked hardware-read preflight as expected.
+
+No hardware-read commands were run on this host.
+
+Commands intentionally not run:
+
+```bash
+cargo run -- nct detect-chip --backend dev-port --confirm-read
+cargo run -- nct read-reg ...
+```
+
+Note:
+
+This board is MS-7E75, not 7A45. It requires a separate board profile and must not reuse the 7A45 NCT register map.
+
 ## MSI 7A45 Target
 
 Status: not tested yet.
