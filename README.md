@@ -6,6 +6,8 @@
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Hardware writes](https://img.shields.io/badge/hardware%20writes-not%20implemented-red)
 
+**Quick links:** [Documentation](#documentation) · [Project Map](#project-map) · [Safety Model](#safety-model) · [Roadmap](#roadmap)
+
 Open-source experimental alternative to MSI Center / Mystic Light for low-level LED initialization control on the MSI motherboard family `7A45`.
 
 The current codebase is a safety-first research MVP. It models known register-level behavior but does not perform real hardware writes yet.
@@ -13,6 +15,27 @@ The current codebase is a safety-first research MVP. It models known register-le
 ## Documentation
 
 - [Knowledge Map](docs/KNOWLEDGE_MAP.md) - architecture, hardware paths, register map, and safety model.
+
+## Project Map
+
+```mermaid
+flowchart LR
+    App[MSI Center / Mystic Light] --> DLL[MBAPI / Driver Engine]
+    DLL --> Driver[NTIOLib driver]
+    Driver --> NCT[Nuvoton NCT6779D]
+    Driver --> SMBus[Intel SMBus]
+    NCT --> Init[7A45 LED init/reset]
+    SMBus --> Renesas[Renesas LED controller 0x52]
+    Renesas --> RGB[RGB / effects / modes]
+
+    boardcontrol[boardcontrol Rust CLI] --> Doctor[doctor preflight]
+    boardcontrol --> Trace[TraceBackend]
+    boardcontrol --> ReadOnly[Linux read-only NCT reads]
+    Doctor --> Safety[DMI + /proc/ioports + /dev/port checks]
+    ReadOnly --> Allowlist[7A45 allowlist]
+```
+
+`boardcontrol` currently implements the safe/read-only side of this map: trace simulation, DMI preflight, chip detection, and allowlisted NCT register reads. LED write/apply commands are not implemented yet.
 
 ## Project Status
 
