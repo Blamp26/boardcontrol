@@ -40,6 +40,44 @@ cargo run -- nct detect-chip --backend dev-port --confirm-read
 cargo run -- nct read-reg ...
 ```
 
+## MSI GP66 Leopard 11UG / Nobara GNOME
+
+Status: MSI-branded host, but non-target board, correctly blocked.
+
+Observed DMI:
+
+```text
+board_vendor = Micro-Star International Co., Ltd.
+board_name = MS-1543
+board_version = REV:1.0
+product_name = GP66 Leopard 11UG
+looks_like_msi_7a45 = false
+```
+
+Observed preflight result:
+
+```text
+Hardware read preflight: BLOCKED
+Reason: host DMI does not look like MSI 7A45: vendor=Micro-Star International Co., Ltd. board=MS-1543 product=GP66 Leopard 11UG
+```
+
+Safe regression result:
+
+* `cargo test` passed: 38 tests
+* `cargo clippy -- -D warnings` passed
+* `cargo run -- nct plan-init-7a45` passed
+* `cargo run -- nct init-7a45 --dry-run` passed
+* `cargo run -- doctor` blocked hardware-read preflight as expected
+
+No hardware-read commands were run on this host.
+
+Commands intentionally not run:
+
+```bash
+cargo run -- nct detect-chip --backend dev-port --confirm-read
+cargo run -- nct read-reg ...
+```
+
 ## MSI 7A45 Target
 
 Status: not tested yet.
