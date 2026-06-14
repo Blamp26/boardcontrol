@@ -15,6 +15,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 ## Documentation
 
 - [Knowledge Map](docs/KNOWLEDGE_MAP.md) - architecture, hardware paths, register map, and safety model.
+- [Safety Model](docs/SAFETY.md) - safety rules, preflight gates, and write policy.
 
 ## Project Map
 
