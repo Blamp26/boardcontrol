@@ -32,12 +32,12 @@ pub fn plan_sequence<B: Backend>(
     for op in sequence.ops() {
         match *op {
             NctOp::Rmw(rmw) => {
-                let current = backend.read_ldn_reg(rmw.ldn, rmw.reg)?;
                 let allowed_change_mask =
                     allowed_change_mask(rmw.ldn, rmw.reg).ok_or(Error::MissingAllowlistEntry {
                         ldn: rmw.ldn,
                         reg: rmw.reg,
                     })?;
+                let current = backend.read_ldn_reg(rmw.ldn, rmw.reg)?;
                 let new_value = (current & rmw.and_mask) | rmw.or_mask;
                 let changed = current ^ new_value;
                 let allowed = changed & !allowed_change_mask == 0;
@@ -136,6 +136,7 @@ mod tests {
                 reg: 0xAA,
             })
         ));
+        assert!(backend.log().is_empty());
     }
 
     #[test]

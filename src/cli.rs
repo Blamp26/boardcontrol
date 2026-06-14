@@ -128,10 +128,10 @@ where
     };
 
     if subcommand == "plan-init-7a45" {
-        return handle_plan(init_sequence_7a45());
+        return ensure_no_extra_args(args).and_then(|_| handle_plan(init_sequence_7a45()));
     }
     if subcommand == "plan-reset-led" {
-        return handle_plan(reset_led_sequence_7a45());
+        return ensure_no_extra_args(args).and_then(|_| handle_plan(reset_led_sequence_7a45()));
     }
     if subcommand == "read-reg" {
         return handle_read_reg(args);
@@ -208,6 +208,17 @@ fn handle_plan(sequence: crate::nct::sequence::NctSequence) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn ensure_no_extra_args<I>(mut args: I) -> Result<()>
+where
+    I: Iterator<Item = String>,
+{
+    if args.next().is_some() {
+        Err(Error::InvalidArgs(help()))
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_read_reg<I>(mut args: I) -> Result<()>
