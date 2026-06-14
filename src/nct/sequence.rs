@@ -146,6 +146,9 @@ pub fn reset_led_sequence_7a45() -> NctSequence {
 
 #[cfg(test)]
 mod tests {
+    use crate::backend::trace::{TraceBackend, TraceEvent};
+    use crate::error::Error;
+
     use super::{NctOp, init_sequence_7a45, reset_led_sequence_7a45};
 
     #[test]
@@ -178,5 +181,91 @@ mod tests {
                 .iter()
                 .all(|op| matches!(op, NctOp::Rmw(_) | NctOp::Delay(_)))
         );
+    }
+
+    #[test]
+    fn test_execute_7a45_init_sequence_trace_backend() {
+        let mut backend = TraceBackend::new();
+
+        let result = init_sequence_7a45().execute(&mut backend);
+        assert!(result.is_ok());
+        assert_eq!(backend.log().len(), 20);
+
+        let reads = backend
+            .log()
+            .iter()
+            .filter(|event| matches!(event, TraceEvent::Read { .. }))
+            .count();
+        let writes = backend
+            .log()
+            .iter()
+            .filter(|event| matches!(event, TraceEvent::Write { .. }))
+            .count();
+
+        assert_eq!(reads, 10);
+        assert_eq!(writes, 10);
+        assert_eq!(backend.reg(0x09, 0xE0), Some(0x80));
+        assert_eq!(backend.reg(0x09, 0xE9), Some(0x80));
+        assert_eq!(backend.reg(0x0B, 0xF7), Some(0x80));
+        assert_eq!(backend.reg(0x09, 0x30), Some(0x02));
+        assert_eq!(backend.reg(0x09, 0x2A), Some(0x40));
+        assert_eq!(backend.reg(0x08, 0xF1), Some(0x80));
+    }
+
+    #[test]
+    fn test_execute_7a45_reset_sequence_trace_backend() {
+        let mut backend = TraceBackend::new();
+        backend.set_reg(0x0B, 0xF7, 0x80);
+
+        let result = reset_led_sequence_7a45().execute(&mut backend);
+        assert!(result.is_ok());
+        assert_eq!(
+            backend.log(),
+            &[
+                TraceEvent::Read {
+                    ldn: 0x0B,
+                    reg: 0xF7,
+                    value: 0x80,
+                },
+                TraceEvent::Write {
+                    ldn: 0x0B,
+                    reg: 0xF7,
+                    value: 0x00,
+                },
+                TraceEvent::Delay { ms: 10 },
+                TraceEvent::Read {
+                    ldn: 0x0B,
+                    reg: 0xF7,
+                    value: 0x00,
+                },
+                TraceEvent::Write {
+                    ldn: 0x0B,
+                    reg: 0xF7,
+                    value: 0x80,
+                },
+            ]
+        );
+        assert_eq!(backend.reg(0x0B, 0xF7), Some(0x80));
+    }
+
+    #[test]
+    fn test_execute_sequence_missing_allowlist_blocks() {
+        let mut backend = TraceBackend::new();
+        let sequence = super::NctSequence::new(vec![super::NctOp::Rmw(super::NctRmwOp {
+            ldn: 0x09,
+            reg: 0xAA,
+            and_mask: 0xFF,
+            or_mask: 0x01,
+        })]);
+
+        let result = sequence.execute(&mut backend);
+        assert!(matches!(
+            result,
+            Err(Error::MissingAllowlistEntry {
+                ldn: 0x09,
+                reg: 0xAA,
+            })
+        ));
+        assert_eq!(backend.log().len(), 0);
     }
 }
