@@ -10,6 +10,10 @@ Open-source experimental alternative to MSI Center / Mystic Light for low-level 
 
 The current codebase is a safety-first research MVP. It models known register-level behavior but does not perform real hardware writes yet.
 
+## Documentation
+
+- [Knowledge Map](docs/KNOWLEDGE_MAP.md) - architecture, hardware paths, register map, and safety model.
+
 ## Project Status
 
 Current MVP status:
