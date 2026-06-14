@@ -1,6 +1,6 @@
 # boardcontrol
 
-![Status](https://img.shields.io/badge/status-trace--only%20MVP-yellow)
+![Status](https://img.shields.io/badge/status-read--only%20hardware%20detection-yellow)
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Hardware writes](https://img.shields.io/badge/hardware%20writes-not%20implemented-red)
 
@@ -13,8 +13,9 @@ The current codebase is a safety-first research MVP. It models known register-le
 Current MVP status:
 
 - Rust CLI
-- trace-only backend
-- no real hardware access yet
+- trace backend for safe sequence simulation
+- experimental Linux read-only Super I/O chip detection
+- no real LED hardware writes yet
 - supports only MSI board profile `7A45`
 - models the Nuvoton NCT6779D LED init/reset sequence
 - includes safe RMW allowlist logic
@@ -24,7 +25,7 @@ Current MVP status:
 
 | Board | Super I/O | Renesas SMBus | Status |
 | --- | --- | --- | --- |
-| `7A45` | `Nuvoton NCT6779D` | `0x52` | `Trace-only MVP, no hardware writes yet` |
+| `7A45` | `Nuvoton NCT6779D` | `0x52` | `Trace simulation + experimental Linux read-only chip detection` |
 
 ## Architecture
 
@@ -83,9 +84,9 @@ cargo clippy -- -D warnings
 - [x] Trace-only Rust CLI MVP
 - [x] 7A45 NCT init/reset sequence model
 - [x] Safe RMW allowlist tests
-- [ ] Linux read-only NCT6779D chip detection
+- [x] Linux read-only NCT6779D chip detection
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
-- [ ] `/proc/ioports` conflict checks
+- [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend
 - [ ] Renesas RGB/mode mapping
 - [ ] Windows backend
@@ -97,6 +98,8 @@ cargo run -- nct detect-chip --backend dev-port --confirm-read
 ```
 
 This command only performs Super I/O config-mode register reads for chip identification. It does not execute LED init/reset writes.
+
+Linux only. Requires permission to access `/dev/port`. The command refuses to run without `--confirm-read`.
 
 ## Legal / Project Note
 
