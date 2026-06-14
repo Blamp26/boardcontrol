@@ -2,7 +2,8 @@ use crate::backend::trace::{TraceBackend, TraceEvent};
 use crate::board::profile_for;
 use crate::error::{Error, Result};
 use crate::linux::dev_port::DevPort;
-use crate::linux::dmi::read_dmi_info;
+use crate::linux::dev_port_info::{dev_port_exists, dev_port_metadata_string};
+use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_dmi_info};
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
 use crate::nct::run_sequence;
@@ -22,10 +23,76 @@ where
     };
 
     match command.as_str() {
+        "doctor" => handle_doctor(),
         "detect" => handle_detect(args),
         "nct" => handle_nct(args),
         _ => Err(Error::InvalidArgs(help())),
     }
+}
+
+fn handle_doctor() -> Result<()> {
+    let dmi = read_dmi_info()?;
+    let ioports_result = superio_ports_available();
+    let dev_port_exists = dev_port_exists();
+    let dev_port_meta = dev_port_metadata_string();
+
+    println!("DMI:");
+    println!(
+        "  board_vendor = {}",
+        dmi.board_vendor.as_deref().unwrap_or("unknown")
+    );
+    println!(
+        "  board_name = {}",
+        dmi.board_name.as_deref().unwrap_or("unknown")
+    );
+    println!(
+        "  board_version = {}",
+        dmi.board_version.as_deref().unwrap_or("unknown")
+    );
+    println!(
+        "  product_name = {}",
+        dmi.product_name.as_deref().unwrap_or("unknown")
+    );
+    println!("  looks_like_msi_7a45 = {}", dmi.looks_like_msi_7a45());
+
+    println!("/proc/ioports:");
+    match &ioports_result {
+        Ok(available) => {
+            println!("  read = yes");
+            println!("  004e-004f available = {available}");
+        }
+        Err(err) => {
+            println!("  read = no");
+            println!("  004e-004f available = unknown");
+            println!("  error = {err}");
+        }
+    }
+
+    println!("/dev/port:");
+    println!("  exists = {dev_port_exists}");
+    println!("  metadata = {dev_port_meta}");
+
+    let final_status = match &ioports_result {
+        Err(err) => PreflightStatus::Blocked(format!("{err}")),
+        Ok(available) => match evaluate_hardware_read_preflight(&dmi, *available) {
+            PreflightStatus::Pass if dev_port_exists => PreflightStatus::Pass,
+            PreflightStatus::Pass => {
+                PreflightStatus::Blocked("dev/port does not exist".to_string())
+            }
+            PreflightStatus::Blocked(reason) => PreflightStatus::Blocked(reason),
+        },
+    };
+
+    println!();
+    match final_status {
+        PreflightStatus::Pass => println!("Hardware read preflight: PASS"),
+        PreflightStatus::Blocked(reason) => {
+            println!("Hardware read preflight: BLOCKED");
+            println!("Reason: {reason}");
+        }
+    }
+
+    Ok(())
 }
 
 fn handle_detect<I>(mut args: I) -> Result<()>
@@ -282,6 +349,7 @@ fn parse_u8_value(input: &str) -> Result<u8> {
 fn help() -> String {
     [
         "usage:",
+        "  msi-ml doctor",
         "  msi-ml detect --board 7A45",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
         "  msi-ml nct detect-chip --backend dev-port --confirm-read",

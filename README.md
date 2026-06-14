@@ -88,6 +88,7 @@ cargo clippy -- -D warnings
 - [x] Safe RMW allowlist tests
 - [x] Linux read-only NCT6779D chip detection
 - [x] Linux read-only allowlisted NCT register reads
+- [x] Safe doctor/preflight diagnostics
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend
@@ -104,6 +105,14 @@ This command only performs Super I/O config-mode register reads for chip identif
 
 Linux only. Requires permission to access `/dev/port`. The command refuses to run without `--confirm-read`.
 Hardware read commands are gated by Linux DMI checks and are expected to run only on hosts that look like MSI 7A45. Non-target systems, such as Dell OptiPlex machines, are rejected before opening `/dev/port`.
+
+## Safe Diagnostics
+
+```bash
+cargo run -- doctor
+```
+
+`doctor` performs non-invasive environment checks only. It reads DMI and `/proc/ioports`, checks whether `/dev/port` exists, and explains whether hardware-read commands would be blocked. It does not open `/dev/port` and does not perform Super I/O port I/O.
 
 ## Experimental Allowlisted Register Read
 
