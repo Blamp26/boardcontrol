@@ -103,7 +103,8 @@ cargo run -- nct plan-init-7a45
 cargo run -- nct plan-reset-led
 ```
 
-`init-7a45` and `reset-led` currently support only `--dry-run`.
+`--dry-run` commands print a planning report first and then execute the same sequence against `TraceBackend`.
+The plan commands only calculate RMW reports and do not mutate even the trace backend.
 
 ## Test Commands
 

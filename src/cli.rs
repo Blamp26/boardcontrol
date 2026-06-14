@@ -155,28 +155,22 @@ where
     }
 
     let profile = profile_for("7A45").ok_or_else(|| Error::UnsupportedBoard("7A45".to_string()))?;
-    let mut backend = TraceBackend::new();
-
     let sequence = match subcommand.as_str() {
         "init-7a45" => profile.init_sequence(),
         "reset-led" => profile.reset_led_sequence(),
         _ => return Err(Error::InvalidArgs(help())),
     };
 
-    run_sequence(&mut backend, &sequence)?;
-    for event in backend.log() {
-        match event {
-            TraceEvent::Read { ldn, reg, value } => {
-                println!("TRACE read  ldn=0x{ldn:02X} reg=0x{reg:02X} value=0x{value:02X}");
-            }
-            TraceEvent::Write { ldn, reg, value } => {
-                println!("TRACE write ldn=0x{ldn:02X} reg=0x{reg:02X} value=0x{value:02X}");
-            }
-            TraceEvent::Delay { ms } => {
-                println!("TRACE delay {ms} ms");
-            }
-        }
-    }
+    let mut plan_backend = TraceBackend::new();
+    let plan = plan_sequence(&mut plan_backend, &sequence)?;
+    println!("=== PLAN ===");
+    print_plan_steps(&plan);
+
+    let mut trace_backend = TraceBackend::new();
+    run_sequence(&mut trace_backend, &sequence)?;
+    println!();
+    println!("=== TRACE ===");
+    print_trace_log(trace_backend.log());
 
     Ok(())
 }
@@ -184,28 +178,7 @@ where
 fn handle_plan(sequence: crate::nct::sequence::NctSequence) -> Result<()> {
     let mut backend = TraceBackend::new();
     let plan = plan_sequence(&mut backend, &sequence)?;
-
-    for step in plan {
-        match step {
-            NctPlanStep::Rmw(rmw) => {
-                println!(
-                    "PLAN RMW ldn=0x{ldn:02X} reg=0x{reg:02X} current=0x{current:02X} and=0x{and_mask:02X} or=0x{or_mask:02X} new=0x{new_value:02X} changed=0x{changed:02X} allowed=0x{allowed_change_mask:02X} status={status}",
-                    ldn = rmw.ldn,
-                    reg = rmw.reg,
-                    current = rmw.current,
-                    and_mask = rmw.and_mask,
-                    or_mask = rmw.or_mask,
-                    new_value = rmw.new_value,
-                    changed = rmw.changed,
-                    allowed_change_mask = rmw.allowed_change_mask,
-                    status = if rmw.allowed { "allowed" } else { "blocked" },
-                );
-            }
-            NctPlanStep::Delay(ms) => {
-                println!("PLAN delay {ms} ms");
-            }
-        }
-    }
+    print_plan_steps(&plan);
 
     Ok(())
 }
@@ -218,6 +191,46 @@ where
         Err(Error::InvalidArgs(help()))
     } else {
         Ok(())
+    }
+}
+
+fn format_plan_step(step: &NctPlanStep) -> String {
+    match step {
+        NctPlanStep::Rmw(rmw) => format!(
+            "PLAN RMW ldn=0x{ldn:02X} reg=0x{reg:02X} current=0x{current:02X} and=0x{and_mask:02X} or=0x{or_mask:02X} new=0x{new_value:02X} changed=0x{changed:02X} allowed=0x{allowed_change_mask:02X} status={status}",
+            ldn = rmw.ldn,
+            reg = rmw.reg,
+            current = rmw.current,
+            and_mask = rmw.and_mask,
+            or_mask = rmw.or_mask,
+            new_value = rmw.new_value,
+            changed = rmw.changed,
+            allowed_change_mask = rmw.allowed_change_mask,
+            status = if rmw.allowed { "allowed" } else { "blocked" },
+        ),
+        NctPlanStep::Delay(ms) => format!("PLAN delay {ms} ms"),
+    }
+}
+
+fn print_plan_steps(steps: &[NctPlanStep]) {
+    for step in steps {
+        println!("{}", format_plan_step(step));
+    }
+}
+
+fn print_trace_log(log: &[TraceEvent]) {
+    for event in log {
+        match event {
+            TraceEvent::Read { ldn, reg, value } => {
+                println!("TRACE read  ldn=0x{ldn:02X} reg=0x{reg:02X} value=0x{value:02X}");
+            }
+            TraceEvent::Write { ldn, reg, value } => {
+                println!("TRACE write ldn=0x{ldn:02X} reg=0x{reg:02X} value=0x{value:02X}");
+            }
+            TraceEvent::Delay { ms } => {
+                println!("TRACE delay {ms} ms");
+            }
+        }
     }
 }
 
@@ -411,7 +424,9 @@ fn help() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_u8_value;
+    use crate::nct::plan::{NctPlanStep, RmwPlan};
+
+    use super::{format_plan_step, parse_u8_value};
 
     #[test]
     fn parse_u8_accepts_hex_and_decimal() {
@@ -425,5 +440,47 @@ mod tests {
     fn parse_u8_rejects_invalid_and_out_of_range_values() {
         assert!(parse_u8_value("0x100").is_err());
         assert!(parse_u8_value("bad").is_err());
+    }
+
+    #[test]
+    fn format_plan_step_allowed_contains_allowed_status() {
+        let step = NctPlanStep::Rmw(RmwPlan {
+            ldn: 0x09,
+            reg: 0xE0,
+            current: 0x00,
+            and_mask: 0x7F,
+            or_mask: 0x00,
+            new_value: 0x00,
+            changed: 0x00,
+            allowed_change_mask: 0x80,
+            allowed: true,
+        });
+
+        let formatted = format_plan_step(&step);
+        assert!(formatted.contains("status=allowed"));
+    }
+
+    #[test]
+    fn format_plan_step_blocked_contains_blocked_status() {
+        let step = NctPlanStep::Rmw(RmwPlan {
+            ldn: 0x09,
+            reg: 0xE0,
+            current: 0x00,
+            and_mask: 0xFE,
+            or_mask: 0x01,
+            new_value: 0x01,
+            changed: 0x01,
+            allowed_change_mask: 0x80,
+            allowed: false,
+        });
+
+        let formatted = format_plan_step(&step);
+        assert!(formatted.contains("status=blocked"));
+    }
+
+    #[test]
+    fn format_plan_step_delay_formats_expected_text() {
+        let step = NctPlanStep::Delay(10);
+        assert_eq!(format_plan_step(&step), "PLAN delay 10 ms");
     }
 }
