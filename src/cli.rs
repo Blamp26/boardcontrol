@@ -2,6 +2,7 @@ use crate::backend::trace::{TraceBackend, TraceEvent};
 use crate::board::profile_for;
 use crate::error::{Error, Result};
 use crate::linux::dev_port::DevPort;
+use crate::linux::dmi::read_dmi_info;
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
 use crate::nct::run_sequence;
@@ -163,6 +164,19 @@ where
         )));
     }
 
+    let dmi = read_dmi_info()?;
+    if !dmi.looks_like_msi_7a45() {
+        return Err(Error::HostDmiMismatch(format!(
+            "host DMI does not look like MSI 7A45: vendor={} board={} product={}",
+            dmi.board_vendor.as_deref().unwrap_or("unknown"),
+            dmi.board_name
+                .as_deref()
+                .or(dmi.board_version.as_deref())
+                .unwrap_or("unknown"),
+            dmi.product_name.as_deref().unwrap_or("unknown"),
+        )));
+    }
+
     if !superio_ports_available()? {
         return Err(Error::InvalidArgs(
             "/proc/ioports reports 004e-004f as busy".to_string(),
@@ -209,6 +223,19 @@ where
         return Err(Error::InvalidArgs(
             "detect-chip currently supports only --backend dev-port".to_string(),
         ));
+    }
+
+    let dmi = read_dmi_info()?;
+    if !dmi.looks_like_msi_7a45() {
+        return Err(Error::HostDmiMismatch(format!(
+            "host DMI does not look like MSI 7A45: vendor={} board={} product={}",
+            dmi.board_vendor.as_deref().unwrap_or("unknown"),
+            dmi.board_name
+                .as_deref()
+                .or(dmi.board_version.as_deref())
+                .unwrap_or("unknown"),
+            dmi.product_name.as_deref().unwrap_or("unknown"),
+        )));
     }
 
     if !superio_ports_available()? {
