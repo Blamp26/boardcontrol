@@ -1,5 +1,7 @@
 # boardcontrol
 
+![CI](https://github.com/Blamp26/boardcontrol/actions/workflows/ci.yml/badge.svg)
+
 ![Status](https://img.shields.io/badge/status-read--only%20hardware%20detection-yellow)
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Hardware writes](https://img.shields.io/badge/hardware%20writes-not%20implemented-red)
