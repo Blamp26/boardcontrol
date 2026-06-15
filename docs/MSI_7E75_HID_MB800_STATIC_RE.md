@@ -32,7 +32,7 @@ The focus is HID discovery/open evidence, `SetFeature` evidence, Gen1/Gen2 repor
 | Input | SHA-256 | Static evidence used |
 | --- | --- | --- |
 | `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\LEDKeeper2.exe` | `990C65F31038AA6DCA39ABBE33735E42424B37696FB56D5B58D6EEA05FBB8159` | Decompiled `MSI_LED.Class_MB_800`, `MSI_LED.MSI_800sLed`, and `MsiHid.HID_Basic`. |
-| `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\Lib\MsiHid.dll` | `27AE0D6D9BF86FDE47E6309557D7DB8EF9E010538FC793FAA2F293A3982C779C` | Static binary string/import scan for exported wrapper names and Windows HID APIs. |
+| `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\Lib\MsiHid.dll` | `27AE0D6D9BF86FDE47E6309557D7DB8EF9E010538FC793FAA2F293A3982C779C` | Static binary string/import scan and native disassembly for exported wrapper names, Windows HID APIs, device filtering, and direct `HidD_SetFeature` behavior. See [MSI_7E75_MSIHID_STATIC_RE.md](MSI_7E75_MSIHID_STATIC_RE.md). |
 | `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\Lib\MsiHid_GameSync.dll` | `27AE0D6D9BF86FDE47E6309557D7DB8EF9E010538FC793FAA2F293A3982C779C` | Same hash as `MsiHid.dll`; used as corroborating wrapper evidence from `MysticLight_AllDevice.dll`. |
 | `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\MysticLight_AllDevice.dll` | `AC35239A4C29DD41736A2162412D525ADA651A2ED5A16CCC9BD50B0C18D0C780` | Parallel `MysticLight_AllDevice.Device.MB_800.MSI_800sLed` and `MysticLight_AllDevice.HID_Basic` evidence. |
 | Prior decoded profile data | See [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md). | Confirms `MS-7E75_1` zones and `EnumChipest.NUC126_MB800` routing. |
@@ -48,8 +48,8 @@ The primary LEDKeeper decompile has `MSI_LED.MSI_800sLed` with `using MsiHid;`, 
 | `Init(ushort pid)` | Calls `openMyDevice_Read(3504, 118, 0, 0, 1)`, reads serial, parses first four hex characters, and succeeds only if that value equals the requested `pid`. | Static gate that can select board ID `0x7E75` from common HID device serial prefix. |
 | `CheckHandle()` | Calls `GetAttributes` and requires VID `3504`, PID `118`. | Confirms the retained handle is checked against MSI common HID VID/PID. |
 | `HID_Basic.openMyDevice_Read` signature | Managed P/Invoke: `openMyDevice_Read(ushort VID, ushort PID, ushort MI, ushort COL, ushort deviceNum = 1)`. | LEDKeeper passes `MI=0`, `COL=0`, `deviceNum=1`; exact native interpretation of MI/COL remains in `MsiHid.dll`. |
-| Native `MsiHid.dll` strings/imports | Exposes `openMyDevice`, `openMyDevice_Read`, `openMyDevice_Overlapped`, `openMyDeviceByStringID_Read`, `GetAllDevicesID`, and imports SetupAPI/Config Manager HID enumeration helpers. | Strong evidence device discovery/open is inside the native HID wrapper. |
-| Usage page / usage | No managed usage-page or usage constants were found for the MB800 path. Native `MsiHid.dll` imports HID/SetupAPI functions, but this pass did not recover internal usage filtering logic. | Usage filtering is unknown. Do not assume a Linux usage-page selector yet. |
+| Native `MsiHid.dll` strings/imports | Exposes `openMyDevice`, `openMyDevice_Read`, `openMyDevice_Overlapped`, `openMyDeviceByStringID_Read`, `GetAllDevicesID`, and imports SetupAPI/Config Manager HID enumeration helpers. Native disassembly shows path tokens `VID_%04X`, `PID_%04X`, `MI_%02X`, and `Col%02X`. | Strong evidence device discovery/open is inside the native HID wrapper and uses VID/PID/MI/COL path filtering. |
+| Usage page / usage | No managed usage-page or usage constants were found for the MB800 path. The native pass did not recover a usage-page or usage predicate beyond HID interface path filtering and `HidD_GetAttributes`. | Usage filtering remains unknown. Do not assume a Linux usage-page selector yet. |
 
 ## `SetFeature` Evidence
 
@@ -57,8 +57,8 @@ The primary LEDKeeper decompile has `MSI_LED.MSI_800sLed` with `using MsiHid;`, 
 
 | Managed method | Native DLL | Static native evidence |
 | --- | --- | --- |
-| `SetFeature(IntPtr DevHandle, byte[] Data, ulong length)` | `Lib\MsiHid.dll` | Native DLL imports `HidD_SetFeature`. |
-| `GetFeature(IntPtr DevHandle, byte[] Data, ulong length)` | `Lib\MsiHid.dll` | Native DLL imports `HidD_GetFeature`. |
+| `SetFeature(IntPtr DevHandle, byte[] Data, ulong length)` | `Lib\MsiHid.dll` | Native wrapper guards `INVALID_HANDLE_VALUE`, then directly calls `HidD_SetFeature(handle, Data, length)`; no report-ID rewrite was found. |
+| `GetFeature(IntPtr DevHandle, byte[] Data, ulong length)` | `Lib\MsiHid.dll` | Native wrapper guards `INVALID_HANDLE_VALUE`, then directly calls `HidD_GetFeature(handle, Data, length)`. |
 | `ReadDeviceInput` / `WriteDeviceOutput` | `Lib\MsiHid.dll` | Native DLL imports `ReadFile`, `WriteFile`, and HID report helpers. |
 | `GetInputReport` / `SetOutputReport` | `Lib\MsiHid.dll` | Native DLL imports `HidD_GetInputReport` and `HidD_SetOutputReport`. |
 | `GetAttributes` | `Lib\MsiHid.dll` | Native DLL imports `HidD_GetAttributes`. |
@@ -146,13 +146,15 @@ Confirmed:
 - `MsiHid.HID_Basic` P/Invokes `Lib\MsiHid.dll`.
 - `Lib\MsiHid.dll` and `Lib\MsiHid_GameSync.dll` have the same SHA-256 in this install.
 - Native HID wrapper strings/imports include SetupAPI/Config Manager enumeration, `CreateFileW`, `ReadFile`, `WriteFile`, and `HidD_*` APIs including `HidD_SetFeature`.
+- Native `MsiHid.dll` filtering uses device-path tokens for `VID_%04X`, `PID_%04X`, `MI_%02X`, and `Col%02X`; `SetFeature` passes caller buffers directly to `HidD_SetFeature`, including report ID byte `Data[0]`.
 - MB800 common device open uses VID `0x0DB0`, PID `0x0076`, MI `0`, COL `0`, device number `1`.
 - `CheckConnectedDevice` and `Init` derive/validate a board-like PID from the first four hex characters of the HID serial string.
 - Gen1 and Gen2 feature report lengths and byte layouts are statically visible.
 
 Unknown:
 
-- The exact native `MsiHid.dll` filtering logic for MI/COL, HID usage page, usage, collection, and device path selection.
+- The exact optimized branch semantics of native post-open `HidD_GetAttributes` checks.
+- HID usage page and usage; the native pass did not recover a usage predicate.
 - The actual HID device path on this host; no devices were enumerated or opened.
 - Whether Linux `hidraw` will expose the same report lengths and behavior without MSI's native wrapper.
 - Whether the MS-7E75 controller accepts all documented report forms safely.
@@ -168,13 +170,13 @@ Static implications:
 - The visible lower transport for the MB800 zone path is HID feature reports, not raw SMBus, EC space, Super I/O GPIO, or `/dev/port`.
 - A future Linux prototype would likely need HID enumeration equivalent to the native wrapper's VID/PID/MI/COL selection and serial-prefix validation before any report access is considered.
 - `hidraw` could be a candidate interface only if a later safe inventory pass confirms the matching USB HID node and report sizes. That inventory has not been performed here.
-- The 290-byte and 302-byte `SetFeature` payloads are larger than the common 64-byte output reports, so any Linux design would need to verify feature-report support and report IDs without guessing.
-- No Linux write/apply implementation should be added until the native wrapper's open logic, device matching, report-size behavior, and failure modes are statically documented and reviewed.
+- The 290-byte and 302-byte `SetFeature` payloads are larger than the common 64-byte output reports; byte `0` is statically confirmed as the feature report ID at the Windows HID API boundary, but Linux report-size behavior must still be verified safely.
+- No Linux write/apply implementation should be added until native device matching, descriptor/report-size behavior, and failure modes are documented and reviewed.
 
 ## Next Static-Only Targets
 
-- Disassemble `Lib\MsiHid.dll` around `openMyDevice_Read`, `SetFeature`, `GetFeature`, and `GetAllDevicesID` to recover VID/PID/MI/COL and usage filtering logic.
-- Statically map native calls from `SetFeature` to `HidD_SetFeature`, including any length checks or report-ID transformations.
+- Reconstruct the full optimized native control flow of `Lib\MsiHid.dll` `openMyDevice*`, especially post-open `HidD_GetAttributes` comparison semantics.
+- Search for any remaining native usage-page/usage checks or descriptor queries not recovered in the first native pass.
 - Statically map `openMyDeviceByStringID_Read` and `GetAllDevicesID` output format without calling either function.
 - Cross-reference `Class_MB_800.Initial`, `RGBControlClass.updateSupportedDevice`, and MB800 startup support-list construction to decide whether MBAPI's `7E75` list gates this HID path.
 - Keep MS-7E75 Linux support blocked until static evidence and a separately reviewed read-only HID inventory plan exist.
