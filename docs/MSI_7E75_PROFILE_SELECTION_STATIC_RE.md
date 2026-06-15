@@ -99,6 +99,7 @@ Support list
 | `Mystic Light\Lib\CCD_MB.xml` | Plain XML table of motherboard IDs for CPU/clock/game-boost-like feature groups. Includes older IDs such as `7A45`. | Shows MSI uses XML MBID tables in installed components. | No `7E75` hit and no Mystic Light LED/profile mapping identified. |
 | `Data\Mystic Light Online Data.dat` | Candidate online Mystic Light data file. SHA-256 `256AD24C5CB2733F23154CE766455249F62A604725C0E2CA5920CEB4FC59C4D6`, length 450143 bytes, header `!!MSI!!`. Base64 decoding yields 337600 bytes beginning `2C 38 38 32 A1 E2 30 E1 ...`. | Strong candidate for downloaded profile/config data. The hash matches the installed log line reporting a successful download of `Mystic Light Online Data.dat`. | No plaintext board/profile terms were found after simple base64 decode; likely encrypted, compressed, or custom encoded. No MS-7E75 mapping decoded. |
 | `Mystic Light\Mystic Light Online Data.dat` | Candidate bundled or cached Mystic Light data file. SHA-256 `EA957F45C4F69AB4125195A00928842666A84C90980ED244510CC0511299BA00`, length 452807 bytes, header `!!MSI!!`. Base64 decoding yields 339600 bytes with the same decoded header prefix as the `Data` copy. | Another strong candidate profile/config blob. | No plaintext board/profile terms were found after simple base64 decode; decoding format remains unknown. |
+| `Mystic Light Online Data.dat` decoded with LEDKeeper `C_Encrypt` logic | Both installed copies decode to UTF-8 text with `[SyncData]`. The `Mystic Light` copy has 1,038 `[SyncData]` entries; the `Data` copy has 1,030. Both contain `MS-7E75_1` and `MS-7E75_2` records with zones `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`. | Provides the missing static profile-source proof for the MS-7E75 board token and zones seen in logs/profile state. | The decoded records contain opaque numeric fields, but no decoded Renesas/SMBus/EC/SIO/backend/register map. See [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md). |
 | `Mystic Light\Profile\*.tmp` | 37 profile-like `.tmp` files plus `loader.tmp`. Most `.tmp` files share binary header `DF BD 50 36 8D 48 6C B5 16 32 16 3B 07 EB C1 EA`; `loader.tmp` begins `71 9C D1 F9 BA 29 D2 06 BF FF F1 21 DB CF 1F 75`. | Candidate packaged/encrypted profile resources. | No readable `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, `JARGB`, `Renesas`, or `SMBus` evidence found in simple static string searches. |
 | `Mystic Light\Log\MLModule.txt` | Existing runtime log artifact repeatedly records `BaseBoard Product : B850 GAMING PLUS WIFI PZ (MS-7E75)`. | Confirms MSI software previously identified this host board in logs. | Runtime log artifact only; not the static profile source and not hardware path proof from this pass. |
 | `MSI Center\Log\CC_Engine\CC_Engine_2026_05_16.txt` | Existing runtime log artifact records `Type1 ProductName : MS-7E75`, `Type2 ProductName : B850 GAMING PLUS WIFI PZ (MS-7E75)`, `MB Procuct Name : 7E75`, `NBChip : B850`, and `Processline : 8 - SMBus`. | Confirms MSI Center previously classified board ID/chipset and reached an SMBus process-line step. | Runtime log artifact only. `Processline : 8 - SMBus` is not proof that MS-7E75 Mystic Light LED headers use SMBus. |
@@ -127,9 +128,8 @@ Confirmed runtime-log artifact hits:
 - `JARGB_V2_3`
 - `[RGBControlClass] mbID 7E75`
 
-Not found as decoded static profile/config evidence:
+Not found as decoded static backend/register evidence:
 
-- No decoded `MS-7E75_1` profile record.
 - No decoded MS-7E75 backend selector.
 - No decoded MS-7E75 SMBus address.
 - No decoded MS-7E75 Renesas controller profile.
@@ -137,7 +137,7 @@ Not found as decoded static profile/config evidence:
 
 ## Candidate Profile / Config Files
 
-`Mystic Light Online Data.dat` is the strongest candidate for externally supplied Mystic Light profile/config data. Both installed copies begin with `!!MSI!!`, and simple base64 decoding produces binary data. The current `Data` copy has SHA-256 `256AD24C5CB2733F23154CE766455249F62A604725C0E2CA5920CEB4FC59C4D6`, matching the hash recorded in an existing MSI Center log line for a successful download.
+`Mystic Light Online Data.dat` is the confirmed static source for MS-7E75 profile/zone records. Both installed copies begin with `!!MSI!!`; the recovered LEDKeeper decode path turns them into UTF-8 text with `[SyncData]` entries for `MS-7E75_1` and `MS-7E75_2`. The current `Data` copy has SHA-256 `256AD24C5CB2733F23154CE766455249F62A604725C0E2CA5920CEB4FC59C4D6`, matching the hash recorded in an existing MSI Center log line for a successful download.
 
 `Mystic Light\Profile\*.tmp` is also a strong candidate family. The stable binary headers and profile-like directory placement suggest packed, encrypted, or otherwise encoded data. No readable MS-7E75 or lighting-zone strings were found by this pass.
 
@@ -156,6 +156,7 @@ Confirmed:
 - Static LEDKeeper2 evidence includes the MBAPI P/Invoke boundary, generic profile/online-data filenames, generic JARGB V2 zone strings, and log templates matching `Support list`, `ResetItem`, and `[RGBControlClass] mbID`.
 - Decompiled LEDKeeper2 evidence shows `MS-7E75_1` can be constructed generically from `MB_Info.Product` and the first board-version character, rather than appearing as a cleartext literal.
 - Decompiled LEDKeeper2 evidence shows `Class_ParseCfg.ParseCfgFile` decodes `Mystic Light Online Data.dat` and fills `[SyncData]`, which `Class_Fun_MB.Compare_Support_MB` uses for board support gating.
+- Decoded online data confirms `[SyncData]` records for `MS-7E75_1` and `MS-7E75_2` with zones `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`.
 - Installed runtime logs show MSI software previously recognized this machine as `B850 GAMING PLUS WIFI PZ (MS-7E75)`.
 - Installed Mystic Light logs show a board/profile-like token `MS-7E75_1`.
 - Installed Mystic Light logs show LED zone labels `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3`.
@@ -167,16 +168,15 @@ Unknown:
 - Which static file or code path creates the `JRGB1` / `JARGB_V2_*` reset-item list.
 - Whether MS-7E75 lighting uses SMBus/Renesas, EC, Super I/O GPIO, ACPI/WMI, USB/HID, RTK bridge, or another MSI route.
 - Whether `Processline : 8 - SMBus` in CC Engine logs is relevant to Mystic Light LED control or only generic platform initialization.
-- Whether the encoded `Mystic Light Online Data.dat` files contain the missing board/profile table.
 - Whether the `Profile\*.tmp` files contain the missing zone or profile resources.
+- Which parser/device class consumes the MS-7E75 `[SyncData]` fields and turns opaque numeric fields into backend/device behavior.
 - Any MS-7E75 SMBus address, command byte, payload layout, IOCTL sequence, EC offset, Super I/O register, or register map.
 
 ## Next Static-Only Targets
 
-- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` path to decode `Mystic Light Online Data.dat` statically and search for MS-7E75 `[SyncData]` / `[Motherboard]` records.
 - Statically decompile `CLEDParser` around support detection, `List_PartItem` construction, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
+- Cross-reference decoded MS-7E75 `[SyncData]` field value `69`, style mask `1342D02C23469345A74401`, and suffix `+1301`.
 - Statically decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table shape, consumers, and dispatch effects.
-- Reverse the `!!MSI!!` plus base64 plus binary format used by `Mystic Light Online Data.dat`.
 - Reverse or identify the binary format used by `Mystic Light\Profile\*.tmp`.
 - Cross-reference runtime log strings back to static call sites in `LEDKeeper2.exe` and `MBAPI_x86.dll`.
 - Continue searching installed MSI Center modules for ACPI/WMI/HID/USB board selectors without executing MSI binaries.

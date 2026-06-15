@@ -43,16 +43,16 @@ Phase 1 - Static information only:
 - Consolidate static reverse-engineering findings and module relevance in [MSI_7E75_STATIC_RE.md](MSI_7E75_STATIC_RE.md).
 - Record MSI Center / Mystic Light profile-selection search evidence in [MSI_7E75_PROFILE_SELECTION_STATIC_RE.md](MSI_7E75_PROFILE_SELECTION_STATIC_RE.md).
 - Record direct `LEDKeeper2.exe` metadata, profile/zone strings, MBAPI P/Invoke boundary, and dispatch-candidate evidence in [MSI_7E75_LEDKEEPER_STATIC_RE.md](MSI_7E75_LEDKEEPER_STATIC_RE.md).
+- Record decoded Mystic Light online/profile data evidence in [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
 Next static-only targets:
 
-- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` decode path to statically decode both installed `Mystic Light Online Data.dat` files and search decrypted `[SyncData]` / `[Motherboard]` records for MS-7E75.
 - Decompile `CLEDParser` and related data classes around `CheckSupportDevice`, `VerifySupportDevice`, `List_PartItem`, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
-- Decompile `C_Encrypt.DecryptBase64` to document the exact `!!MSI!!` online-data transform.
+- Cross-reference decoded MS-7E75 `[SyncData]` field value `69`, style mask `1342D02C23469345A74401`, and suffix `+1301`.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
-- Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
+- Reverse the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
 - Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify Renesas/Mystic Light call families.
 - Build static vtable maps for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.

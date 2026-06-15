@@ -60,7 +60,7 @@ No MSI binary was launched. ILSpy read the assembly as data.
 | --- | --- | --- | --- |
 | `MSI_LED.MB` | Internal static P/Invoke wrapper with `MB_DLL_FileName = "Lib\\MBAPI_x86.dll"` and 94 imported methods. | Confirms LEDKeeper routes motherboard LED/support, Renesas, SMBus, EC, SIO, DRAM, Realtek SSD, and Sonix DDR calls through MBAPI. | Generic MBAPI boundary only; no MS-7E75-specific transport/register map. |
 | `Class_Fun_MB.GetWMI` | Parses MSI board strings from WMI/system product data. If product contains `(MS-...)`, sets `MB_Info.Market` to text before `(MS-...)` and `MB_Info.Product` to the `MS-...` token. | Static source for `MB_Info.Product = MS-7E75` and market name when WMI/DMI string is `B850 GAMING PLUS WIFI PZ (MS-7E75)`. | Uses runtime OS/WMI data; no hardware register proof. |
-| `Class_Fun_MB.Compare_Support_MB` | Checks `App.ParseCfg.List_SyncData` for either `WMI_MB_Info.Product + "_" + WMI_MB_Info.Version.Substring(0, 1)` or `MB_Info.Market`. | Explains how online/config `SyncData` can gate board support before profile token construction. | Requires decoded online data at runtime; this pass did not decode an MS-7E75 record. |
+| `Class_Fun_MB.Compare_Support_MB` | Checks `App.ParseCfg.List_SyncData` for either `WMI_MB_Info.Product + "_" + WMI_MB_Info.Version.Substring(0, 1)` or `MB_Info.Market`. | Explains how online/config `SyncData` can gate board support before profile token construction. | A later static profile-data pass decoded `MS-7E75_1` and `MS-7E75_2` records; this method still does not prove backend/register selection. |
 | `Class_Fun_MB.Init_MB` | Calls `MB.CheckMBVersion(MB_Info.Product, MB_Info.Version, MB_Info.Market, "T")` and stores `Init_MB_Status`. | Confirms MBAPI receives product/version/market for motherboard initialization/support. | Does not show MBAPI's internal 7E75 dispatch. |
 | `Class_Fun_MB` Renesas wrappers | Methods such as `LEDMysticControlV2`, `SetMysticBreathingModeV2`, `SetMysticLEDColorV2`, and `SetMysticRainbowModeV2` call `RenesasLEDControlV3` with fixed command-like numeric values. | Confirms a generic Renesas-style MBAPI wrapper family exists in LEDKeeper. | Not tied to MS-7E75. Numeric arguments are not a board register map. |
 | `App` startup support flow | Calls `ParseCfg.ParseCfgFile()`, `Compare_Support_MB()`, `Init_MB()`, builds `TestData`, logs `Support list : ...`, initializes profile state, and starts registry watchers. | Confirms support-list logging and profile setup are LEDKeeper code paths. | Runtime inputs decide the actual list. |
@@ -73,7 +73,7 @@ No MSI binary was launched. ILSpy read the assembly as data.
 | `MSI_7B10Led.IsDeviceConnect` | For `SupportList_CommonID`, opens common HID VID/PID `3504,118` and compares the HID serial-number prefix to the requested board ID. For `SupportList`, opens MSI VID `5218` with PID equal to the board ID. | Explains why some board IDs are common-device dispatch rather than direct PID only. | HID/open behavior was only read from static code; it was not run. No MS-7E75 entry. |
 | `MSI_7B10Led.CheckSupportMethod` | Similar common-ID/direct-ID static logic; reads HID feature data buffers. | Candidate table consumer for board support method selection. | Not an MS-7E75 proof. |
 | `MSI_7B10Led.IsSupportJARGB_V2` | Checks whether `PID` is in `SupportList_JARGB_V2`, with a special `7D36`/`Z790` fallback. | Static JARGB V2 support gate. | `MS_7E75` absent. |
-| `Class_ParseCfg.ParseCfgFile` | Reads MSI Center `Component\SDK\WorkDir`, selects `Data\Mystic Light Online Data.dat` or `Mystic Light\Mystic Light Online Data.dat`, strips the first 7 characters, decrypts with `C_Encrypt.DecryptBase64(..., 232345599.ToString("X"))`, and extracts `[Motherboard]`, `[Graphics]`, `[GraphicsNumber]`, and `[SyncData]` sections. | Confirms online data is a real static input for support/profile selection and identifies the decode function/key expression. | The decrypted installed blob was not decoded in this pass; no MS-7E75 record extracted here. |
+| `Class_ParseCfg.ParseCfgFile` | Reads MSI Center `Component\SDK\WorkDir`, selects `Data\Mystic Light Online Data.dat` or `Mystic Light\Mystic Light Online Data.dat`, strips the first 7 characters, decrypts with `C_Encrypt.DecryptBase64(..., 232345599.ToString("X"))`, and extracts `[Motherboard]`, `[Graphics]`, `[GraphicsNumber]`, and `[SyncData]` sections. | Confirms online data is a real static input for support/profile selection and identifies the decode function/key expression. | The follow-up profile-data pass used this path and found MS-7E75 zone records, but not backend/register mapping. |
 | `ProfileFunction` | `SavePath` is Windows-drive root plus `MSI\MSI Center\Mystic Light\Profile\`; `SaveName = "Profile_v2.txt"`. `LoadProfile` creates/reads JSON profile data. `CheckProfile` and `GetDeviceSetting` read `ProfileInfo.cfg` section/key `CurrentProfileIndex/Index`. | Confirms `Profile_v2.txt` and `ProfileInfo.cfg` profile flow. | No `Profile\*.tmp` or `loader.tmp` reference found in decompiled target classes. |
 | `CControl.ResetItem` | Logs `ResetItem : <index> (<ShowName>) <StyleSelectIndex>` and proofing messages, then applies per-chipset reset logic. | Static source for runtime log lines such as `ResetItem : 1 (JARGB_V2_1) 10`. | The actual `ShowName` list comes from parsed profile/support data, not a hard-coded MS-7E75 table in this method. |
 | `CControl.StartWatcher` | Creates a WMI `RegistryValueChangeEvent` watcher for `...\LED` value `MB_JARGB_V2`. | Confirms registry event flow for JARGB V2 setting changes. | Registry watching was not run. |
@@ -104,6 +104,7 @@ This table is generic MBAPI surface evidence. It does not prove MS-7E75 uses any
 - `Class_ParseCfg.ParseCfgFile` reads MSI Center `Component\SDK\WorkDir` from registry, then selects the newer or available copy of `Data\Mystic Light Online Data.dat` and `Mystic Light\Mystic Light Online Data.dat`.
 - The online data parser strips the first seven characters, matching the known `!!MSI!!` header length, then calls `C_Encrypt.DecryptBase64` with key expression `232345599.ToString("X")`.
 - `ParseCfgFile` extracts `[Motherboard]`, `[Graphics]`, `[GraphicsNumber]`, and `[SyncData]` sections. `Class_Fun_MB.Compare_Support_MB` later consumes `List_SyncData`.
+- A later static decode pass confirmed both installed `Mystic Light Online Data.dat` copies contain `MS-7E75_1` and `MS-7E75_2` `[SyncData]` records with zones `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`. See [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md).
 - `ProfileFunction` stores profile JSON in `MSI\MSI Center\Mystic Light\Profile\Profile_v2.txt` under the Windows drive root and reads current profile index from `ProfileInfo.cfg` key `CurrentProfileIndex/Index`.
 - No decompiled target class referenced `Profile\*.tmp` or `loader.tmp` by literal name.
 
@@ -125,6 +126,7 @@ Confirmed:
 - `App` can derive `App.mbID = 0x7E75` from `MB_Info.Product` using substring extraction and hex conversion.
 - `App` can construct `MS-7E75_1` generically as `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1)`.
 - `RGBControlClass.updateSupportedDevice` can parse and log `[RGBControlClass] mbID 7E75` from incoming supported-device text containing `MS-7E75`.
+- Decoded online profile data statically contains `MS-7E75_1` and `MS-7E75_2` records consumed through the `Class_ParseCfg` path.
 
 Not confirmed:
 
@@ -146,16 +148,14 @@ Confirmed:
 
 Unknown:
 
-- Whether the installed `Mystic Light Online Data.dat` contains an MS-7E75 `[SyncData]` or profile record.
 - Whether MBAPI's static `7E75` board-list hit is the source that approves MS-7E75 support.
 - Which module creates the final `CLEDParser.List_PartItem` records for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` on MS-7E75.
 - Whether MS-7E75 lighting uses SMBus/Renesas, EC, SIO, USB/HID/common-device, ACPI/WMI, or another transport.
 
 ## Next Static-Only Targets
 
-- Use the recovered `Class_ParseCfg` decode path to statically decode both installed `Mystic Light Online Data.dat` files and search decrypted `[SyncData]` / `[Motherboard]` records for MS-7E75.
 - Decompile `CLEDParser` support parsing, especially `CheckSupportDevice`, `VerifySupportDevice`, `List_PartItem` construction, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
-- Decompile `C_Encrypt.DecryptBase64` to document the exact `!!MSI!!` data transform.
+- Cross-reference decoded MS-7E75 `[SyncData]` field value `69`, style mask `1342D02C23469345A74401`, and suffix `+1301`.
 - Continue static MBAPI work around the confirmed `7E75` board-ID list and `CheckMBVersion` / `SupportLED` consumers.
 - Inspect `MLModule.dll`, `MysticLight_AllDevice.dll`, and `SyncData.dll` statically for MS-7E75 records and `CLEDParser` data types.
 - Inspect registry/profile schema references for `MB_JARGB_V2_Support*`, `MB_JARGB_V2_Info*`, and generated zone show names without reading live hardware.

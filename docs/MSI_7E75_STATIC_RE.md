@@ -36,6 +36,7 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 | --- | --- |
 | [MSI_7E75_PROFILE_SELECTION_STATIC_RE.md](MSI_7E75_PROFILE_SELECTION_STATIC_RE.md) | Static search for MSI Center / Mystic Light board-profile, LED-zone, and route-selection evidence. |
 | [MSI_7E75_LEDKEEPER_STATIC_RE.md](MSI_7E75_LEDKEEPER_STATIC_RE.md) | Direct `LEDKeeper2.exe` static metadata, strings, resources, MBAPI P/Invoke boundary, profile/zone evidence, and dispatch-candidate notes. |
+| [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md) | Static decode of `Mystic Light Online Data.dat` and inspection of profile data files containing MS-7E75 zone records. |
 | [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) | Direct `Driver_Engine.dll` transport, service, device, and IOCTL evidence. |
 | [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) | Direct `SMBus_Engine.dll` SMBus transaction, controller-selection, and Renesas-adjacent evidence. |
 | [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md) | Direct `rtk_bridge.dll` Realtek bridge/device-handle evidence and relevance assessment. |
@@ -52,7 +53,8 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 - `LEDKeeper2.exe` contains board support enums and candidate dispatch classes such as `RGBControlClass`, `Class_Fun_MB`, and `MSI_7B10Led`, but no cleartext `7E75`, `MS-7E75`, `MS-7E75_1`, or `B850` was found in that executable.
 - `LEDKeeper2.exe` decompilation shows `MS-7E75_1` can be generated indirectly from runtime board identity as `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1)`, while `App.mbID` can be generated from the four hex digits after `MS-`.
 - `LEDKeeper2.exe` decompilation shows `Class_ParseCfg.ParseCfgFile` selects and decodes `Mystic Light Online Data.dat`, extracts `[SyncData]`, and `Class_Fun_MB.Compare_Support_MB` checks `[SyncData]` against board product/version or market strings.
-- Installed runtime log artifacts show `MS-7E75_1`, `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` for this host, but the static source that creates those profile/zone names is still unknown.
+- Static decoding of both installed `Mystic Light Online Data.dat` copies confirms `[SyncData]` records for `MS-7E75_1` and `MS-7E75_2` with `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`.
+- Installed runtime log artifacts show `MS-7E75_1`, `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` for this host, matching the decoded static profile data.
 - The actual `Driver_Engine.dll` imports and uses `CreateFileW`, `DeviceIoControl`, and Service Control Manager APIs.
 - The actual `Driver_Engine.dll` embeds `NTIOLib.sys` and `NTIOLib_X64.sys`, constructs `\\.\<caller-provided-name>` device paths, and delegates privileged operations to a kernel driver through visible `0xc350....` IOCTL constants.
 - The actual `SMBus_Engine.dll` exports SMBus byte/block/check/SPD wrappers and initializes from a Driver Engine-like object supplied by its caller.
@@ -67,7 +69,7 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 | Module | Confirmed role | Relevance to MS-7E75 Mystic Light | Board-specific proof found? | Current assessment |
 | --- | --- | --- | --- | --- |
 | MBAPI-like boundary | Mystic Light API layer; loads companion engines; contains LED, SMBus, Driver Engine, EC/SIO, NCT, fan LED symbols, and a broad static board-ID list that includes `7E75`. | High as the orchestration layer, but the `7E75` entry is not yet tied to a concrete backend. | `7E75` board-list entry found; no decoded zone/transport/register mapping found. | Important starting point; likely chooses feature/backend paths through flags, code, or data still to be mapped. |
-| `LEDKeeper2.exe` | Managed Mystic Light orchestration executable; wraps `Lib\MBAPI_x86.dll`, owns `RGBControlClass` log templates, generic board support enums, profile/online-data filenames, and JARGB V2 strings. | High for support/profile/zone dispatch research. | Generic `JARGB_V2_1/2/3`, `JRGB1`, `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID ` strings found; no cleartext `7E75` or `MS-7E75_1` found. | Strong dispatch candidate, but current evidence suggests MS-7E75-specific data is elsewhere or computed/loaded at runtime. |
+| `LEDKeeper2.exe` | Managed Mystic Light orchestration executable; wraps `Lib\MBAPI_x86.dll`, owns `RGBControlClass` log templates, generic board support enums, profile/online-data filenames, and JARGB V2 strings. | High for support/profile/zone dispatch research. | Generic `JARGB_V2_1/2/3`, `JRGB1`, `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID ` strings found; no cleartext `7E75` or `MS-7E75_1` found. | Strong dispatch candidate. Decompilation shows it loads decoded online data where MS-7E75 records were later confirmed. |
 | `Driver_Engine.dll` | Generic privileged access bridge through `CreateFileW`, SCM APIs, `DeviceIoControl`, `NTIOLib.sys`, and `NTIOLib_X64.sys`. | High as the low-level transport provider used by MBAPI and SMBus Engine. | No board/header strings found. | Explains generic NTIOLib-backed port/PCI/memory/MSR access, not an LED map. |
 | `SMBus_Engine.dll` | Generic SMBus byte/block/check/SPD transaction engine with Intel/ATI backend selection through Driver Engine PCI config calls. | High as the strongest generic candidate for the MBAPI Mystic Light/Renesas SMBus path. | No MS-7E75/header strings found. | Likely part of the main generic transport path, but not proof MS-7E75 uses it. |
 | `rtk_bridge.dll` | Realtek USB/storage bridge helper with bridge scan/open, IOCTL command wrapper, and bridge LED helpers. | Low for motherboard headers unless a future board/accessory selector points to it. | No MS-7E75/header strings found. | Probably unrelated to MS-7E75 motherboard Mystic Light; likely accessory/bridge-device support. |
@@ -110,7 +112,7 @@ Missing proof includes:
 - The `7E75` board ID is present in a broad MBAPI board list, but no analyzed static source links it to a meaningful MS-7E75 lighting dispatch path.
 - No analyzed module maps MS-7E75 to SMBus address `0x52`, Renesas LED commands, EC space, Super I/O GPIO, RTK bridge, or another concrete backend.
 - No analyzed module identifies MS-7E75 JRGB/JRAINBOW header registers, command bytes, payload layout, zones, or controller identity.
-- Existing runtime logs identify likely UI/profile names for MS-7E75 zones, but logs do not establish register behavior or the static profile source.
+- Decoded online data identifies the static profile source for MS-7E75 zone labels, but it does not establish register behavior.
 - NCT/Super I/O evidence in MBAPI includes known older-board behavior such as 7A45-related flags, but that must not be reused for MS-7E75.
 - Driver Engine and SMBus Engine explain how privileged and SMBus operations can be performed, not which operations are correct for this board.
 
@@ -118,7 +120,7 @@ Therefore MS-7E75 remains research-only, and hardware access remains blocked.
 
 ## What Remains Unknown
 
-- Where MSI Center stores or computes the `MS-7E75_1` board/profile selection observed in existing logs.
+- Which parser/device class consumes the decoded `MS-7E75_1` / `MS-7E75_2` `[SyncData]` records and maps their opaque fields into runtime device objects.
 - Whether MS-7E75 motherboard lighting uses SMBus/Renesas, EC, Super I/O GPIO, ACPI/WMI, USB/HID, RTK bridge, or another MSI service.
 - Whether the MBAPI `LEDMysticControl` SMBus address/command pattern applies to MS-7E75 or only to other MSI boards/controllers.
 - Whether `NTIOLib_MysticLight` is the installed service name, device name, profile name, or a caller-provided alias.
@@ -129,10 +131,10 @@ Therefore MS-7E75 remains research-only, and hardware access remains blocked.
 
 ## Next Static-Only Targets
 
-- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` decode path to decode `Mystic Light Online Data.dat` statically and search `[SyncData]` / `[Motherboard]` records for MS-7E75.
 - Decompile `CLEDParser` around support parsing and `List_PartItem` zone construction.
+- Cross-reference decoded MS-7E75 `[SyncData]` field value `69`, style mask `1342D02C23469345A74401`, and suffix `+1301`.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
-- Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
+- Reverse the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
 - Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify the Renesas/Mystic Light call families.
 - Build a static vtable map for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.
