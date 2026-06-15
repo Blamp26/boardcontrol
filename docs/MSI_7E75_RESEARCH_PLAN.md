@@ -39,6 +39,7 @@ Phase 1 - Static information only:
 - Record Driver Engine transport-boundary evidence in [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md).
 - Record SMBus Engine transaction/controller-selection evidence in [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md).
 - Record RTK Bridge Realtek bridge/device-handle evidence in [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md).
+- Record CPU Engine CPU telemetry/tuning evidence in [MSI_7E75_CPU_ENGINE_STATIC_RE.md](MSI_7E75_CPU_ENGINE_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
