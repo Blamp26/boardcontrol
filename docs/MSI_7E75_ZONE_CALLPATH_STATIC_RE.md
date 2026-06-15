@@ -70,6 +70,8 @@ The common style mask `1342D02C23469345A74401` parses as `EnumStyle` bytes `0x13
 | `MSI_800sLed.Gen2_ApplyPort` | Builds a 302-byte feature buffer initialized to `0xFF`, sets `array[0] = 144 + Port`, writes fixed ID, lighting mode, four colors, option bytes, LED count per strip, final store byte, and calls `HID_Basic.SetFeature`. | Concrete helper payload shape for JARGB V2 ports 0..3. | Static HID feature-buffer evidence; report bytes are not sufficient to claim a register map. |
 | `MSI_LED.MB` | P/Invokes `Lib\MBAPI_x86.dll` methods such as `LEDControl`, `LEDMysticControl`, `RenesasLEDControlV3`, `SMBusControl`, `SetECSpace`, and `SetSIOGPIO`. | Generic motherboard LED API surface remains present in LEDKeeper. | No static path found from MS-7E75 MB800 zones to these methods in this pass. |
 
+Follow-up HID details are documented in [MSI_7E75_HID_MB800_STATIC_RE.md](MSI_7E75_HID_MB800_STATIC_RE.md). That pass confirms the primary LEDKeeper MB800 path is `MSI_LED.MSI_800sLed -> MsiHid.HID_Basic -> Lib\MsiHid.dll`, with native static imports including `HidD_SetFeature`, `HidD_GetFeature`, SetupAPI enumeration helpers, `CreateFileW`, `ReadFile`, and `WriteFile`.
+
 ## Candidate Zone-To-Call-Target Mapping
 
 This is the current static mapping from decoded MS-7E75 profile zones to decompiled managed call targets. It is a call-target map, not a register map.
@@ -99,14 +101,14 @@ Confirmed:
 Unknown:
 
 - Whether the installed/live MS-7E75 path always reaches `Class_MB_800`; this static pass proves the decoded profile records select `NUC126_MB800`, not that runtime initialization succeeds.
-- How `HID_Basic` opens the final physical device for this host beyond static helper code and support-list patterns.
+- The native `MsiHid.dll` filtering logic for MI/COL, usage page, usage, collection, and device path selection.
 - Whether MBAPI's separate static `7E75` board-list entry participates before, beside, or independently of the MB800 profile path.
-- The exact device report semantics below `HID_Basic.SetFeature`.
+- The exact controller-side semantics of the HID feature reports below `HID_Basic.SetFeature`.
 - Any MS-7E75 SMBus address, EC offset, SIO register, raw IOCTL sequence, or register map.
 
 ## Next Static-Only Targets
 
-- Statically decompile and document `HID_Basic` from the relevant MSI assembly to map VID/PID open logic, serial-prefix checks, report IDs, and helper imports.
+- Continue native static analysis of `Lib\MsiHid.dll` around `openMyDevice_Read`, `SetFeature`, and `GetAllDevicesID`.
 - Cross-reference `MSI_800sLed.CheckConnectedDevice`, `Init`, and support lists with the known `7E75` board ID without opening devices.
 - Continue MBAPI static analysis around the `7E75` board-list hit to determine whether it is a separate support gate or unrelated to the MB800 LED path.
 - Inspect `Class_MB_800.Initial`, `RGBControlClass.updateSupportedDevice`, and startup support-list construction for a complete static initialization chain into `Class_MB_800`.

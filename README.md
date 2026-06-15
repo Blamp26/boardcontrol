@@ -26,6 +26,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 LEDKeeper2 Static Notes](docs/MSI_7E75_LEDKEEPER_STATIC_RE.md) - static LEDKeeper2.exe metadata, string, resource, profile/zone, and dispatch-candidate evidence.
 - [MSI MS-7E75 Profile Data Static Notes](docs/MSI_7E75_PROFILE_DATA_STATIC_RE.md) - static decode of Mystic Light online/profile data showing MS-7E75 zone records.
 - [MSI MS-7E75 Zone Call-Path Static Notes](docs/MSI_7E75_ZONE_CALLPATH_STATIC_RE.md) - static MS-7E75 zone-to-`Class_MB_800` / `MSI_800sLed` helper call-path evidence.
+- [MSI MS-7E75 MB800 HID Static Notes](docs/MSI_7E75_HID_MB800_STATIC_RE.md) - static HID wrapper, device-open, and Gen1/Gen2 feature-report layout evidence for the MB800 path.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - direct static Driver_Engine.dll transport, service, device, and IOCTL evidence.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
 - [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.

@@ -45,6 +45,7 @@ Phase 1 - Static information only:
 - Record direct `LEDKeeper2.exe` metadata, profile/zone strings, MBAPI P/Invoke boundary, and dispatch-candidate evidence in [MSI_7E75_LEDKEEPER_STATIC_RE.md](MSI_7E75_LEDKEEPER_STATIC_RE.md).
 - Record decoded Mystic Light online/profile data evidence in [MSI_7E75_PROFILE_DATA_STATIC_RE.md](MSI_7E75_PROFILE_DATA_STATIC_RE.md).
 - Record the static zone-to-helper call path from decoded MS-7E75 zones through `CLEDParser`, `Class_MB_800`, and `MSI_800sLed` in [MSI_7E75_ZONE_CALLPATH_STATIC_RE.md](MSI_7E75_ZONE_CALLPATH_STATIC_RE.md).
+- Record the static MB800 HID wrapper and feature-report layout evidence in [MSI_7E75_HID_MB800_STATIC_RE.md](MSI_7E75_HID_MB800_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
@@ -52,7 +53,7 @@ Next static-only targets:
 
 - Treat decoded MS-7E75 `[SyncData]` field value `69` as `EnumChipest.NUC126_MB800` based on static decompilation, and continue tracing the MB800 path without opening devices.
 - Cross-reference decoded MS-7E75 style mask `1342D02C23469345A74401`, default index `10`, and suffix `+1301` against MB800 style/effect parsers.
-- Decompile `HID_Basic`, `MSI_800sLed.CheckConnectedDevice`, and `MSI_800sLed.Init` statically to map helper-level report/open logic.
+- Disassemble `Lib\MsiHid.dll` around `openMyDevice_Read`, `SetFeature`, `GetFeature`, and `GetAllDevicesID` to recover native HID filtering and wrapper behavior.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
 - Reverse the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
