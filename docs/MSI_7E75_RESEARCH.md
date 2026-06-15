@@ -17,3 +17,5 @@ Important:
 - Do not enable `read-reg` for this board yet.
 - Do not add write/apply commands.
 - A separate board profile and separate hardware research are required.
+
+Research plan: [MSI_7E75_RESEARCH_PLAN.md](MSI_7E75_RESEARCH_PLAN.md)
