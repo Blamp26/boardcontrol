@@ -80,9 +80,11 @@ cargo run -- nct read-reg ...
 
 ## MSI B850 GAMING PLUS WIFI PZ / Fedora Live
 
-Status: MSI-branded host, but non-target board, correctly blocked.
+Status: MSI-branded host, recognized as MS-7E75 research-only, hardware access correctly blocked.
 
-Validated after commit `de045e2`:
+Validated after commit `de045e2`.
+
+Observed DMI / doctor detection:
 
 ```text
 board_vendor = Micro-Star International Co., Ltd.
@@ -91,16 +93,6 @@ board_version = 1.0
 product_name = MS-7E75
 looks_like_msi_7a45 = false
 looks_like_msi_7e75 = true
-```
-
-Observed DMI:
-
-```text
-board_vendor = Micro-Star International Co., Ltd.
-board_name = B850 GAMING PLUS WIFI PZ (MS-7E75)
-board_version = 1.0
-product_name = MS-7E75
-looks_like_msi_7a45 = false
 ```
 
 Observed preflight result:
@@ -112,15 +104,11 @@ Reason: host DMI does not look like MSI 7A45: vendor=Micro-Star International Co
 
 Safe regression result:
 
-- `cargo run -- doctor` blocked hardware-read preflight as expected.
+* cargo run -- doctor blocked hardware-read preflight as expected.
 
 MS-7E75 DMI recognition is validated.
-Hardware access remains blocked.
-No detect-chip, read-reg, or write/apply commands were run.
-
-Code now recognizes this DMI as `looks_like_msi_7e75 = true`, but hardware access remains blocked because no 7E75 hardware profile exists yet.
-
-No hardware-read commands were run on this host.
+Hardware access remains blocked because no 7E75 hardware profile exists yet.
+No detect-chip, read-reg, or write/apply commands were run on this host.
 
 Commands intentionally not run:
 
