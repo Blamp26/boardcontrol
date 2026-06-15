@@ -22,6 +22,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Research Notes](docs/MSI_7E75_RESEARCH.md) - research-only notes for B850 GAMING PLUS WIFI PZ.
 - [MSI MS-7E75 Research Plan](docs/MSI_7E75_RESEARCH_PLAN.md) - staged safety plan before any hardware probing.
 - [MSI MS-7E75 Static Reverse Engineering Notes](docs/MSI_7E75_STATIC_RE.md) - static MSI Center / Mystic Light control-path evidence.
+- [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - static Driver_Engine.dll transport-boundary evidence and open questions.
 
 ## Project Map
 

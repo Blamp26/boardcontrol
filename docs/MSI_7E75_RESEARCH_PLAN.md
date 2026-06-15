@@ -36,6 +36,7 @@ Phase 1 - Static information only:
 - Collect BIOS version.
 - Collect public MSI support/manual/spec links.
 - Record static MSI Center / Mystic Light evidence in [MSI_7E75_STATIC_RE.md](MSI_7E75_STATIC_RE.md).
+- Record Driver Engine transport-boundary evidence in [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
