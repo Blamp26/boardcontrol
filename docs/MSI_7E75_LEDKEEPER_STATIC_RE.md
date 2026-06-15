@@ -77,9 +77,9 @@ No MSI binary was launched. ILSpy read the assembly as data.
 | `ProfileFunction` | `SavePath` is Windows-drive root plus `MSI\MSI Center\Mystic Light\Profile\`; `SaveName = "Profile_v2.txt"`. `LoadProfile` creates/reads JSON profile data. `CheckProfile` and `GetDeviceSetting` read `ProfileInfo.cfg` section/key `CurrentProfileIndex/Index`. | Confirms `Profile_v2.txt` and `ProfileInfo.cfg` profile flow. | No `Profile\*.tmp` or `loader.tmp` reference found in decompiled target classes. |
 | `CControl.ResetItem` | Logs `ResetItem : <index> (<ShowName>) <StyleSelectIndex>` and proofing messages, then applies per-chipset reset logic. | Static source for runtime log lines such as `ResetItem : 1 (JARGB_V2_1) 10`. | The actual `ShowName` list comes from parsed profile/support data, not a hard-coded MS-7E75 table in this method. |
 | `CControl.StartWatcher` | Creates a WMI `RegistryValueChangeEvent` watcher for `...\LED` value `MB_JARGB_V2`. | Confirms registry event flow for JARGB V2 setting changes. | Registry watching was not run. |
-| `Class_MB_800.GetCycleNumber` | Maps device IDs containing `JARGB_V2_1`, `_2`, `_3`, or `EZ Conn` to ports 1..4 and falls back to `JRAINBOW*_CycleNumber` registry keys when Gen2 data is unavailable. | Static zone-name-to-port evidence. | MB800 path is not proven for MS-7E75. |
-| `Class_MB_800.UpdateJARGB_V2_Basic` | Uses `App.listFixIDJARGBGen2[port]`, `App.listLEDNumJARGBGen2[port]`, registry `MB_JARGB_V2_Info{port+1}`, and `MSI_800sLed.Gen2_SetStrip` / `Gen2_ApplyPort`. | Static evidence for Gen2 strip/port construction. | No MS-7E75 tie. |
-| `Class_MB_800.SetStyle` | For `JARGB_V2_1/2/3`, writes registry value `MB_JARGB_V2` to `SetJARGB_V2_1/2/3`, reads `MB_JARGB_V2_Info1/2/3`, and calls `UpdateJARGB_V2_Basic`. | Confirms the `JARGB_V2_1/2/3` profile strings drive JARGB V2 port handling in this path. | Applies to MB800/common-device path only unless tied to MS-7E75 later. |
+| `Class_MB_800.GetCycleNumber` | Maps device IDs containing `JARGB_V2_1`, `_2`, `_3`, or `EZ Conn` to ports 1..4 and falls back to `JRAINBOW*_CycleNumber` registry keys when Gen2 data is unavailable. | Static zone-name-to-port evidence. A follow-up pass resolves the MS-7E75 tuple chipset byte `69` to `EnumChipest.NUC126_MB800`. | Logical port mapping, not a register map. |
+| `Class_MB_800.UpdateJARGB_V2_Basic` | Uses `App.listFixIDJARGBGen2[port]`, `App.listLEDNumJARGBGen2[port]`, registry `MB_JARGB_V2_Info{port+1}`, and `MSI_800sLed.Gen2_SetStrip` / `Gen2_ApplyPort`. | Static evidence for Gen2 strip/port construction for the MS-7E75 MB800-decoded JARGB V2 zones. | Lower helper evidence reaches HID feature buffers, not raw registers. |
+| `Class_MB_800.SetStyle` | Filters `PartItem` entries by `EnumChipest.NUC126_MB800`, builds `DeviceID = MainDevice + "_" + ShowName`, calls `MSI_800sLed.Gen1_SetArea` / `Gen1_ApplyBoard` for Gen1 areas, and for `JARGB_V2_1/2/3` and `EZ Conn` writes `MB_JARGB_V2 = SetJARGB_V2_1/2/3/4` or calls `UpdateJARGB_V2_Basic`. | Follow-up static analysis ties decoded MS-7E75 zone tuples to this MB800 path. | No direct path from these zones to `MSI_LED.MB` P/Invokes was found. |
 
 ## P/Invoke Table For `MSI_LED.MB`
 
@@ -115,6 +115,7 @@ This table is generic MBAPI surface evidence. It does not prove MS-7E75 uses any
 - `App` reads registry keys `MB_JARGB_V2_Support1` through `MB_JARGB_V2_Support4` to set `bSupportJARGBGen2Port1..4`, `currentJARGB_Gen2`, fixed IDs, and LED counts.
 - `Class_MB_800.UpdateJARGB_V2_Basic` reads `MB_JARGB_V2_Info{n}` entries as comma-separated 21-field strip records, builds `MSI_800sLed.Struct_Gen2StripSetting`, calls `Gen2_SetStrip`, then calls `Gen2_ApplyPort`.
 - `Class_MB_800.SetStyle` writes `MB_JARGB_V2 = SetJARGB_V2_1/2/3/4` for advanced port changes and reads the matching `MB_JARGB_V2_Info{n}` data.
+- `MysticLight_AllDevice.Device.MB_800.MSI_800sLed.Gen1_ApplyBoard` and `Gen2_ApplyPort` build HID feature buffers and call `HID_Basic.SetFeature`; see [MSI_7E75_ZONE_CALLPATH_STATIC_RE.md](MSI_7E75_ZONE_CALLPATH_STATIC_RE.md).
 - `RGBControlClass.Init_MB_Adv_v1` detects JARGB V2 via `Device_7B10.IsSupportJARGB_V2()` or `Device_7D26.IsSupportJARGB_V2()` and runs per-port `JARGB_V2_OnlyDetect` / `JARGB_SwitchToGen1`.
 
 ## `7E75` / `MS-7E75_1` Findings
@@ -132,7 +133,7 @@ Not confirmed:
 
 - No static LEDKeeper support enum contains `MS_7E75`.
 - No static LEDKeeper switch/case specifically names `7E75`.
-- No decompiled LEDKeeper method maps MS-7E75 to SMBus, Renesas, EC, SIO, HID, USB, or MB800.
+- A follow-up static pass maps decoded MS-7E75 profile records to `EnumChipest.NUC126_MB800`, `Class_MB_800`, and `MSI_800sLed` helper calls.
 - No MS-7E75 SMBus address, EC offset, SIO register, HID report, IOCTL sequence, command payload, or register map was found.
 
 ## Confirmed Vs Unknown
@@ -144,18 +145,19 @@ Confirmed:
 - LEDKeeper consumes encrypted/base64-like Mystic Light online data through `Class_ParseCfg`.
 - LEDKeeper stores/loads user profile data through `Profile_v2.txt` and `ProfileInfo.cfg`.
 - LEDKeeper contains generic JRGB/JRAINBOW/JARGB V2 zone handling and JARGB V2 registry/port logic.
+- Decoded MS-7E75 zone tuples select `EnumChipest.NUC126_MB800`, which statically routes through `Class_MB_800` to `MSI_800sLed`; those helper apply methods call `HID_Basic.SetFeature`.
 - LEDKeeper contains static modern-board dispatch lists near `MS_7E75`, including `MS_7E74`, but not `MS_7E75`.
 
 Unknown:
 
 - Whether MBAPI's static `7E75` board-list hit is the source that approves MS-7E75 support.
-- Which module creates the final `CLEDParser.List_PartItem` records for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` on MS-7E75.
-- Whether MS-7E75 lighting uses SMBus/Renesas, EC, SIO, USB/HID/common-device, ACPI/WMI, or another transport.
+- Whether the MB800 helper path is the complete live MS-7E75 runtime path.
+- Whether MBAPI, SMBus/Renesas, EC, SIO, ACPI/WMI, or another backend participates before or beside the MB800 helper path.
 
 ## Next Static-Only Targets
 
-- Decompile `CLEDParser` support parsing, especially `CheckSupportDevice`, `VerifySupportDevice`, `List_PartItem` construction, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
-- Cross-reference decoded MS-7E75 `[SyncData]` field value `69`, style mask `1342D02C23469345A74401`, and suffix `+1301`.
+- Decompile and document `HID_Basic` plus `MSI_800sLed.CheckConnectedDevice` / `Init` without opening devices.
+- Continue cross-referencing the MS-7E75 style/effect mask `1342D02C23469345A74401`, default index `10`, and suffix `+1301` against MB800 parsers.
 - Continue static MBAPI work around the confirmed `7E75` board-ID list and `CheckMBVersion` / `SupportLED` consumers.
 - Inspect `MLModule.dll`, `MysticLight_AllDevice.dll`, and `SyncData.dll` statically for MS-7E75 records and `CLEDParser` data types.
 - Inspect registry/profile schema references for `MB_JARGB_V2_Support*`, `MB_JARGB_V2_Info*`, and generated zone show names without reading live hardware.

@@ -125,7 +125,7 @@ The two decoded online-data copies are similar but not byte-identical.
 | `Mystic Light\Mystic Light Online Data.dat` decoded `[SyncData]` | Contains `MS-7E75_1` and `MS-7E75_2` records. Each record includes zones `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`. | Static profile-source proof for the observed MS-7E75 profile token and zone labels. | Opaque numeric fields are not decoded to transport/register semantics. |
 | `Data\Mystic Light Online Data.dat` decoded `[SyncData]` | Also contains `MS-7E75_1` and `MS-7E75_2` with the same visible zone set. | Confirms the downloaded/data copy has the same MS-7E75 support/profile records. | Same limitation: no backend/register mapping. |
 | Decoded online data term counts | `JRGB`, `JRAINBOW`, and `JARGB` terms are broadly present; `Renesas`, `SMBus`, and `MBAPI` are absent in both decoded copies. | Suggests the online data is profile/zone/support data rather than a named transport table. | Absence of names does not prove absence of backend flags in opaque numeric fields. |
-| `MS-7E75_1` decoded record | Zone field pattern includes `JRGB1,09,69,...`, `JARGB_V2_1,00,69,...`, `JARGB_V2_2,01,69,...`, `JARGB_V2_3,02,69,...`, `EZ Conn,03,69,...`, `SELECT ALL,11,69,...`. | Proves concrete zone labels and stable opaque numeric fields for MS-7E75 profile data. | `69`, `10`, `3+2`, `5+5`, and hex style masks are currently opaque profile/config values, not decoded registers. |
+| `MS-7E75_1` decoded record | Zone field pattern includes `JRGB1,09,69,...`, `JARGB_V2_1,00,69,...`, `JARGB_V2_2,01,69,...`, `JARGB_V2_3,02,69,...`, `EZ Conn,03,69,...`, `SELECT ALL,11,69,...`. A follow-up decompile pass resolves `69` as `EnumChipest.NUC126_MB800`. | Proves concrete zone labels and ties the decoded records to the MB800 managed device path. | `10`, `3+2`, `5+5`, and hex style masks are profile/effect fields, not decoded registers. The MB800 tie still does not prove a raw backend/register map. |
 | `Profile_v2.txt` | JSON `DeviceData` includes `MS-7E75_1_JRGB1`, `MS-7E75_1_JARGB_V2_1`, `_2`, `_3`, `MS-7E75_1_EZ Conn`, and `MS-7E75_1_SELECT ALL`; each motherboard zone has 11 style entries and selected index 10, except `SELECT ALL` selected index 2. | Confirms local profile state was built from the same MS-7E75 zone model. | Runtime/user profile state, not original packaged support source and not backend proof. |
 | `Profile_1.cfg` / `Profile_2.cfg` | INI profiles contain `MS-7E75_1_0` through `MS-7E75_1_5`, plus `CurrentSyncList=Style_Button_MB|MS-7E75_1,...`. | Confirms six local motherboard profile slots matching six decoded zones. | Numeric slot-to-zone mapping is inferred from decoded zone order, not explicitly named in these INI sections. |
 | `ML3.cfg` | Contains `ListString=MS-7E75_1,10DE2F0453221462|0`. | Confirms local Mystic Light profile grouping includes the MS-7E75 board token. | No zone/backend details. |
@@ -170,22 +170,22 @@ Confirmed:
 - The recovered `Class_ParseCfg` / `C_Encrypt` decode path works on installed `Mystic Light Online Data.dat` files.
 - Both decoded online-data copies contain `[SyncData]` records for `MS-7E75_1` and `MS-7E75_2`.
 - The decoded MS-7E75 records statically define the visible zone set `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `EZ Conn`, and `SELECT ALL`.
+- A follow-up static call-path pass resolves the decoded chipset byte `69` to `EnumChipest.NUC126_MB800` and maps the zones into `Class_MB_800` / `MSI_800sLed` helper calls. See [MSI_7E75_ZONE_CALLPATH_STATIC_RE.md](MSI_7E75_ZONE_CALLPATH_STATIC_RE.md).
 - Local profile files under `C:\MSI\MSI Center\Mystic Light\Profile` contain MS-7E75 profile state using the same zone names.
 - The decoded data provides the missing static source for `MS-7E75_1` and the observed Mystic Light zone labels.
 
 Unknown:
 
-- The meaning of the opaque numeric fields in each zone tuple.
-- Which code path consumes field `69`, style mask `1342D02C23469345A74401`, default style index `10`, and suffix `+1301`.
-- Whether the opaque fields eventually select MB800, MBAPI, SMBus/Renesas, EC, SIO, HID/USB, ACPI/WMI, or another backend.
+- The remaining meaning of profile/effect fields such as default style index `10`, speed `3+2`, brightness `5+5`, and suffix `+1301`.
+- Whether the MB800 helper path is the complete live MS-7E75 runtime path, and how its lower HID helper opens the final physical device.
+- Whether MBAPI, SMBus/Renesas, EC, SIO, ACPI/WMI, or another backend participates before or beside the MB800 helper path.
 - Whether MBAPI's static `7E75` board-list hit is used together with these decoded profile records.
 - The binary format and purpose of packaged `Profile\*.tmp` and `loader.tmp`.
 
 ## Next Static-Only Targets
 
-- Decompile `CLEDParser` and related `SyncData` classes to map `[SyncData]` fields into `List_PartItem`, `ShowName`, `MainDevice`, `DeviceName`, `Chipest`, style lists, and backend/device class selection.
-- Cross-reference field value `69` in LEDKeeper2, SyncData.dll, MLModule.dll, MysticLight_AllDevice.dll, and MBAPI_x86.dll.
-- Cross-reference the MS-7E75 style/effect mask `1342D02C23469345A74401` and suffix `+1301` against parsers and device classes.
+- Continue static MB800 call-path work from [MSI_7E75_ZONE_CALLPATH_STATIC_RE.md](MSI_7E75_ZONE_CALLPATH_STATIC_RE.md), especially `HID_Basic`, `MSI_800sLed.CheckConnectedDevice`, and initialization support-list construction.
+- Cross-reference the MS-7E75 style/effect mask `1342D02C23469345A74401`, default index `10`, and suffix `+1301` against MB800 style parsers.
 - Continue static MBAPI work around the confirmed `7E75` board-ID list and `CheckMBVersion` / `SupportLED` consumers.
 - Identify the `.tmp` binary format statically, but treat it as lower priority now that online data gives direct MS-7E75 profile records.
 
