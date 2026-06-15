@@ -4,13 +4,11 @@ Status: static analysis only, hardware access disabled.
 
 ## Scope
 
-This document records the Driver Engine focused follow-up from a Ghidra MCP static-analysis session for MSI MS-7E75 / B850 GAMING PLUS WIFI PZ research.
+This document records a static Ghidra/headless pass on the actual MSI Mystic Light `Driver_Engine.dll`, plus the older MBAPI boundary evidence that led to this module.
 
-The task was to inspect `Driver_Engine.dll` for exports, imports, functions, strings, device names, service names, `NTIOLib_MysticLight` references, service/device-open paths, `DeviceIoControl` usage, visible IOCTL constants, I/O port helpers, physical-memory helpers, PCI config helpers, and whether this explains the `MBAPI_x86.dll` transport.
+The direct pass investigated exports, imports, strings, functions, `NTIOLib` references, device and service paths, driver filenames, service-control paths, `CreateFileW`, `DeviceIoControl`, visible IOCTL constants, I/O port helpers, physical-memory helpers, PCI config helpers, and board-specific strings.
 
-Important limitation: the Ghidra MCP session did not expose a project/program switcher or load command. The active Ghidra program presented the same PE image previously inferred as `MBAPI_x86.dll`, not `Driver_Engine.dll` itself. Therefore, this note documents confirmed static evidence for how the active MBAPI-like binary loads and calls `Driver_Engine.dll`, plus the unknowns that require loading `Driver_Engine.dll` directly in Ghidra. It does not claim to have resolved the internal driver/device/IOCTL implementation.
-
-No board support code was added.
+This is documentation-only research for MS-7E75 / B850 GAMING PLUS WIFI PZ. It does not enable MS-7E75 hardware access and does not claim MS-7E75 uses any path unless evidence is specific.
 
 ## Safety Constraints
 
@@ -28,137 +26,264 @@ No board support code was added.
 
 ## Analyzed Binary
 
-| Binary / project | Source | Status | Notes |
-| --- | --- | --- | --- |
-| Active Ghidra program, inferred `MBAPI_x86.dll` | Ghidra MCP active program | Analyzed | PE image with `.text`, `.rdata`, `.data`, `.rsrc`, and `.reloc` segments. Exports LED, SMBus, EC, NCT, DRAM, and hardware-monitor helper functions. Contains strings and loader code for `\Driver_Engine.dll`. |
-| `Driver_Engine.dll` | Referenced by active program | Not directly loaded through available MCP tools | Internals such as device names, service control-manager use, `DeviceIoControl`, IOCTL constants, and low-level driver calls remain unknown until the DLL itself is active in Ghidra. |
+| Field | Value |
+| --- | --- |
+| Binary | `C:\Program Files (x86)\MSI\MSI Center\Mystic Light\Lib\Driver_Engine.dll` |
+| SHA-256 | `3A558050D1B82FE30BE75AA23338AE2A3C86E72BE65496FACB18E1838A138B6B` |
+| Size | `1,858,576` bytes |
+| Timestamp on disk | `2023-12-28 10:22:08` local time |
+| Ghidra language | `x86:LE:32:default` |
+| Image base | `10000000` |
+| Function count | `10873` |
+| Import count | `583` |
+| String count | `2610` |
 
-## Candidate Driver / Device / IOCTL Paths
+Ghidra/headless reported successful import, analysis, script execution, and save for a temporary copy of the DLL. The DLL was not executed as an operating-system process.
 
-The active MBAPI-like binary constructs a path ending in `\Driver_Engine.dll`, calls `LoadLibraryA`, resolves low-level exports with `GetProcAddress`, and then calls `DriverInitialization` with the caller-provided parameters plus constant `0x2f405a34`.
+## Direct Driver Engine Evidence
 
-Resolved Driver Engine export names:
+### Exports
 
-- `DriverInitialization`
-- `ReadIoPortByte`
-- `WriteIoPortByte`
-- `ReadIoPortWord`
-- `WriteIoPortWord`
-- `ReadCMOSByte`
-- `WriteCMOSByte`
-- `Rdmsr`
-- `Wrmsr`
-- `ReadPhysicalMemory`
-- `ReadPhysicalMemory_Byte`
-- `WritePhysicalMemory_Byte`
-- `ReadPhysicalMemory_DWORD`
-- `WritePhysicalMemory_DWORD`
-- `PCIConfigRead`
-- `PCIConfigWrite`
-- `DriverRelease`
+The actual `Driver_Engine.dll` export table contains the low-level functions previously resolved by MBAPI:
 
-The MBAPI-side function-pointer layout explains the transport boundary:
+| Export | Address |
+| --- | --- |
+| `DriverInitialization` | `10002d90` |
+| `DriverRelease` | `10002e40` |
+| `PCIConfigRead` | `10002e60` |
+| `PCIConfigWrite` | `10002eb0` |
+| `Rdmsr` | `10002ef0` |
+| `ReadCMOSByte` | `10002f40` |
+| `ReadIoPortByte` | `10002f80` |
+| `ReadIoPortWord` | `10002fc0` |
+| `ReadPhysicalMemory` | `10003000` |
+| `ReadPhysicalMemory_Byte` | `10003040` |
+| `ReadPhysicalMemory_DWORD` | `10003080` |
+| `WriteCMOSByte` | `100030c0` |
+| `WriteIoPortByte` | `100030f0` |
+| `WriteIoPortWord` | `10003120` |
+| `WritePhysicalMemory_Byte` | `10003150` |
+| `WritePhysicalMemory_DWORD` | `10003190` |
+| `Wrmsr` | `100031d0` |
 
-- Function pointer offset `0x00`: `DriverInitialization`
-- Offset `0x04`: `ReadIoPortByte`
-- Offset `0x08`: `WriteIoPortByte`
-- Offset `0x0c`: `ReadIoPortWord`
-- Offset `0x10`: `WriteIoPortWord`
-- Offset `0x14`: `ReadCMOSByte`
-- Offset `0x18`: `WriteCMOSByte`
-- Offset `0x1c`: `Rdmsr`
-- Offset `0x20`: `Wrmsr`
-- Offset `0x24`: `ReadPhysicalMemory`
-- Offset `0x28`: `ReadPhysicalMemory_Byte`
-- Offset `0x2c`: `WritePhysicalMemory_Byte`
-- Offset `0x30`: `ReadPhysicalMemory_DWORD`
-- Offset `0x34`: `WritePhysicalMemory_DWORD`
-- Offset `0x38`: `PCIConfigRead`
-- Offset `0x3c`: `PCIConfigWrite`
-- Offset `0x40`: `DriverRelease`
-- Offset `0x44`: initialization/available flag used by higher-level wrappers
+The exported wrappers stage an operation selector and arguments, then call an internal dispatcher. The wrappers do not contain inline port, PCI, MSR, or physical-memory instructions in the decompiled output inspected here.
 
-Candidate device/service/IOCTL status:
+### Imports
 
-- Device names: not visible in the active MBAPI-like program. No `\\.\...` device path strings were found by focused string search.
-- Service names: not visible in the active MBAPI-like program. Focused string searches for `CreateService`, `OpenService`, and `StartService` returned no string hits, and the import table did not show those SCM APIs.
-- `NTIOLib_MysticLight`: present as a string at `1021e1a8`; likely passed into `DriverInitialization`, but exact use is unresolved without direct `Driver_Engine.dll` analysis.
-- `CreateFileA/W`: imported by the active program, but no decompiled direct device-open path was confirmed in this follow-up.
-- `DeviceIoControl`: no static import and no string hit in the active program. The likely location for IOCTL dispatch is `Driver_Engine.dll` and/or its kernel driver, not the active MBAPI-like binary.
-- IOCTL constants: no visible IOCTL constants were confirmed from the active program during this follow-up.
+The direct DLL statically imports the Windows APIs needed for a user-mode privileged-driver bridge:
+
+| Import | Evidence |
+| --- | --- |
+| `KERNEL32.DLL::CreateFileW` | Imported and used by the device-open helper. |
+| `KERNEL32.DLL::DeviceIoControl` | Imported and referenced by the low-level request helpers. |
+| `KERNEL32.DLL::CloseHandle` | Imported for device-handle cleanup. |
+| `KERNEL32.DLL::GetLastError` | Imported for service/open/start error handling. |
+| `KERNEL32.DLL::GetNativeSystemInfo` | Present near the NTIOLib driver filename evidence; likely supports x86/x64 driver selection. |
+| `ADVAPI32.DLL::OpenSCManagerW` | Imported and used by service-management code. |
+| `ADVAPI32.DLL::CreateServiceW` | Imported and used by the service-create helper. |
+| `ADVAPI32.DLL::OpenServiceW` | Imported and used by service query/start/stop/delete helpers. |
+| `ADVAPI32.DLL::StartServiceW` | Imported and used by the service-start helper. |
+| `ADVAPI32.DLL::ControlService` | Imported and used by the service-stop helper. |
+| `ADVAPI32.DLL::DeleteService` | Imported and used by the service-delete helper. |
+| `ADVAPI32.DLL::ChangeServiceConfigW` | Imported and used by a service-config helper. |
+
+### Strings
+
+Direct strings of interest:
+
+| String | Address | Meaning |
+| --- | --- | --- |
+| `\\.\` | `10142cb4` | DOS device-path prefix constructed before `CreateFileW`. |
+| `NTIOLib_X64.sys` | `10142cc0` | Candidate x64 kernel-driver filename. |
+| `NTIOLib.sys` | `10142ce0` | Candidate x86/kernel-driver filename. |
+| `DeviceIoControl` | `1018d2d2` | Imported API name. |
+| `CreateFileW` | `1018d2e4` | Imported API name. |
+| `ControlService` | `1018f330` | Imported API name. |
+| `CreateServiceW` | `1018f342` | Imported API name. |
+| `DeleteService` | `1018f354` | Imported API name. |
+| `OpenSCManagerW` | `1018f364` | Imported API name. |
+| `OpenServiceW` | `1018f376` | Imported API name. |
+| `StartServiceW` | `1018f39c` | Imported API name. |
+| `Driver_Engine.dll` | `1018fc02` | Self/module string. |
+
+String searches in the direct DLL found no `NTIOLib_MysticLight`, `Mystic`, `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, `ARGB`, `SMBus`, or Nuvoton/NCT board-control strings. `RGB` hits were generic MFC/UI color strings, not board LED evidence.
+
+### Service And Device Path
+
+The device-open helper constructs:
+
+```text
+\\.\<caller-provided service/device name>
+```
+
+It then calls:
+
+```text
+CreateFileW(path, 0xc0000000, 0, NULL, 3, 0x80, NULL)
+```
+
+The handle is stored in the Driver Engine object and later used by `DeviceIoControl` helpers.
+
+The service-management code opens the Service Control Manager with `OpenSCManagerW(NULL, NULL, 0xf003f)`. Static decompilation shows helper paths for:
+
+- `CreateServiceW(serviceName, serviceName, 0xf01ff, 1, 3, 1, driverPath, ...)`
+- treating `GetLastError() == 0x431` as an already-existing service condition.
+- `OpenServiceW(..., 0xf01ff)` followed by `StartServiceW`.
+- treating `GetLastError() == 0x420` as an already-running service condition.
+- `ControlService(service, 1, ...)` for stop.
+- `DeleteService` for removal.
+- `ChangeServiceConfigW(..., driverPath, ...)` for path/config updates.
+
+The direct DLL hard-codes `NTIOLib.sys` and `NTIOLib_X64.sys`, but it does not hard-code `NTIOLib_MysticLight`. The older MBAPI boundary evidence indicates `NTIOLib_MysticLight` is supplied from MBAPI/caller context rather than embedded in this DLL.
+
+### DeviceIoControl And IOCTL Constants
+
+The direct DLL uses `DeviceIoControl` through internal helper functions. References to the imported API were found from multiple internal functions, including helpers corresponding to init/auth, MSR, I/O port, physical memory, and PCI config operations.
+
+Visible IOCTL constants:
+
+| IOCTL | Static role observed |
+| --- | --- |
+| `0xc350214c` | Initialization/auth request carrying the third `DriverInitialization` argument. MBAPI previously passes `0x2f405a34`. |
+| `0xc3502084` | `Rdmsr` helper: 4-byte input, 8-byte output. |
+| `0xc3502088` | `Wrmsr` helper: 12-byte input, status/output word. |
+| `0xc35060cc` | Read I/O port byte; also used after CMOS address selection. |
+| `0xc35060d0` | Read I/O port word. |
+| `0xc350a0d8` | Write I/O port byte; also used for CMOS address/data writes. |
+| `0xc350a0dc` | Write I/O port word. |
+| `0xc3506104` | Read physical memory. |
+| `0xc350a108` | Write physical memory. |
+| `0xc3506144` | PCI config read. |
+| `0xc350a148` | PCI config write. |
+
+### Export Operation Selectors
+
+The exported wrappers write a selector into internal state before dispatching:
+
+| Selector | Exported operation |
+| --- | --- |
+| `0x01` | `ReadIoPortByte` |
+| `0x02` | `WriteIoPortByte` |
+| `0x03` | `ReadIoPortWord` |
+| `0x04` | `WriteIoPortWord` |
+| `0x05` | `ReadCMOSByte` |
+| `0x06` | `WriteCMOSByte` |
+| `0x07` | `Rdmsr` |
+| `0x08` | `Wrmsr` |
+| `0x09` | `ReadPhysicalMemory` |
+| `0x0a` | `ReadPhysicalMemory_Byte` |
+| `0x0b` | `WritePhysicalMemory_Byte` |
+| `0x0c` | `ReadPhysicalMemory_DWORD` |
+| `0x0d` | `WritePhysicalMemory_DWORD` |
+| `0x0e` | `PCIConfigRead` |
+| `0x0f` | `PCIConfigWrite` |
+
+`PCIConfigRead` and `PCIConfigWrite` compute a PCI address from bus/device/function fields plus offset and size arguments, then dispatch to the PCI IOCTL helpers.
+
+## Older MBAPI Boundary Evidence
+
+The previous MBAPI-focused pass remains useful as boundary evidence:
+
+- The active MBAPI-like binary dynamically constructs a sibling path ending in `\Driver_Engine.dll`.
+- It calls `LoadLibraryA` and resolves Driver Engine exports with `GetProcAddress`.
+- It calls `DriverInitialization(param_2, param_3, 0x2f405a34)`.
+- It stores function pointers for I/O port, CMOS, MSR, physical-memory, PCI config, and release helpers.
+- MBAPI-side NCT helper functions call the resolved `ReadIoPortByte` and `WriteIoPortByte` pointers.
+- `NTIOLib_MysticLight` appears in MBAPI-side strings, not in the direct `Driver_Engine.dll` strings from this pass.
+
+This boundary evidence explains how MBAPI reaches the Driver Engine transport layer. It does not prove that MS-7E75 uses the NCT/Super I/O paths.
 
 ## Evidence Table
 
-| Binary / module | Function / artifact | Address | Evidence | Why it matters | Confidence | Confirmed path |
-| --- | --- | --- | --- | --- | --- | --- |
-| Active program, inferred `MBAPI_x86.dll` | Memory segments | `10000000`-`102811ff` | PE sections `.text`, `.rdata`, `.data`, `.rsrc`, `.reloc`; no program-switching tool exposed | Confirms the analyzed MCP-visible image is the active program, not necessarily the requested companion DLL. | High | Ghidra MCP active program |
-| Active program, inferred `MBAPI_x86.dll` | Exports | Various | Exports include `LEDMysticControl`, `LEDControl`, `_SMBusControl@12`, `SetMysticLEDColor`, `ControlFANLED`, `GetCPUTemp`, `SetECSpace`, `GetECSpace`, NCT helpers | Export surface matches an MSI MBAPI/control-layer DLL, not a low-level driver-engine-only DLL. | High | MBAPI/control layer |
-| Active program, inferred `MBAPI_x86.dll` | Imports | `EXTERNAL:00000003`, `EXTERNAL:00000068` | `CreateFileW`, `CreateFileA` imported | The active binary can open files/handles, but this is not proof of a direct device open in the inspected paths. | Low | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | Imports | `EXTERNAL:0000008a`-`EXTERNAL:000000b4` | `LoadLibraryW`, `LoadLibraryExW`, `LoadLibraryA`, `GetProcAddress`, `FreeLibrary` imported | Supports dynamic loading of companion engines such as `Driver_Engine.dll`. | High | Dynamic DLL transport |
-| Active program, inferred `MBAPI_x86.dll` | Imports | N/A | No static `DeviceIoControl` import found in import pages | Suggests IOCTL usage is not statically imported by this active program, or is hidden in `Driver_Engine.dll`/another layer. | Medium | Unknown / Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | Imports | N/A | No `CreateService`, `OpenService`, or `StartService` imports found in import pages | Service installation/start logic was not visible in the active program import table. | Medium | Unknown / Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | String | `10221318` | `\Driver_Engine.dll` | Confirms the active program dynamically references the Driver Engine companion module. | High | Dynamic DLL transport |
-| Active program, inferred `MBAPI_x86.dll` | `FUN_100460d0` | `100460d0` | Builds `\Driver_Engine.dll` path, calls `LoadLibraryA`, resolves Driver Engine exports with `GetProcAddress` | Core evidence that MBAPI delegates privileged operations through `Driver_Engine.dll`. | High | MBAPI -> Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | `FUN_100460d0` | `100460d0` | Calls resolved `DriverInitialization(param_2, param_3, 0x2f405a34)` and stores a readiness byte at object offset `0x44` | Shows Driver Engine initialization is explicit and gated before higher-level wrappers use I/O helpers. | High | MBAPI -> Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | Strings | `10221344`, `10221354`, `10221364`, `10221374` | `ReadIoPortByte`, `WriteIoPortByte`, `ReadIoPortWord`, `WriteIoPortWord` | Driver Engine export names for port I/O. Exact implementation remains inside `Driver_Engine.dll`. | High | Driver Engine export |
-| Active program, inferred `MBAPI_x86.dll` | Strings | `10221384`, `10221394`, `102213a4` | `ReadCMOSByte`, `WriteCMOSByte`, `Rdmsr` / nearby `Wrmsr` resolution in decompile | Driver Engine export names include CMOS and MSR access. | High | Driver Engine export |
-| Active program, inferred `MBAPI_x86.dll` | Strings | `102213b4`-`10221418` | `ReadPhysicalMemory`, `ReadPhysicalMemory_Byte`, `WritePhysicalMemory_Byte`, `ReadPhysicalMemory_DWORD`, `WritePhysicalMemory_DWORD` | Driver Engine export names for physical memory access. | High | Driver Engine export |
-| Active program, inferred `MBAPI_x86.dll` | Strings | `10221434`, `10221444` | `PCIConfigRead`, `PCIConfigWrite` | Driver Engine export names for PCI configuration access. | High | Driver Engine export |
-| Active program, inferred `MBAPI_x86.dll` | String | `1021e1a8` | `NTIOLib_MysticLight` | Likely low-level driver/library identity associated with Mystic Light. Exact role remains unresolved. | High | Driver Engine / NTIOLib candidate |
-| Active program, inferred `MBAPI_x86.dll` | String search | N/A | No `DeviceIoControl` string hit | No direct string evidence for DeviceIoControl in active program. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | String search | N/A | No `\\.\` device path strings found | Candidate NT device/user-mode DOS device names are not visible in active program strings. | Medium | Unknown / Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | String search | N/A | No `CreateService`, `OpenService`, or `StartService` string hits | Service-management path is not visible as plain text in the active program. | Medium | Unknown / Driver Engine |
-| Active program, inferred `MBAPI_x86.dll` | `NCT6779D_EnterConfig` | Function name present | Calls function pointer at Driver Engine object offset `0x08` with `(0x4e, 0x87)` twice | MBAPI NCT config-entry write is implemented through the resolved `WriteIoPortByte` pointer, not inline raw I/O. This is not MS-7E75 register-map evidence. | High | MBAPI -> Driver Engine port I/O |
-| Active program, inferred `MBAPI_x86.dll` | `NCT6779D_ExitConfig` | Function name present | Calls function pointer at Driver Engine object offset `0x08` with `(0x4e, 0xaa)` | MBAPI NCT config-exit write is delegated through Driver Engine. This must not be reused for MS-7E75. | High | MBAPI -> Driver Engine port I/O |
-| Active program, inferred `MBAPI_x86.dll` | `NCT6779D_ReadLDNReg` | Function name present | Uses offset `0x08` writes to `0x4e/0x4f`, then offset `0x04` read from `0x4f` | Shows how MBAPI wraps Super I/O indexed reads over Driver Engine `WriteIoPortByte`/`ReadIoPortByte`. This does not identify MS-7E75 hardware. | High | MBAPI -> Driver Engine port I/O |
-| Active program, inferred `MBAPI_x86.dll` | `NCT6779D_WriteLDNReg` | Function name present | Uses offset `0x08` writes to `0x4e/0x4f` for LDN/register/value | Shows how MBAPI wraps Super I/O indexed writes over Driver Engine `WriteIoPortByte`. This was observed only statically and was not run. | High | MBAPI -> Driver Engine port I/O |
-| Active program, inferred `MBAPI_x86.dll` | `ReleaseDll` | `10040070` | Calls function pointer at Driver Engine object offset `0x40` when readiness flag at `0x44` is set | Confirms a matching `DriverRelease` cleanup callback. | High | MBAPI -> Driver Engine |
+| Module | Artifact | Address / value | Evidence | Interpretation | Confidence |
+| --- | --- | --- | --- | --- | --- |
+| `Driver_Engine.dll` | SHA-256 | `3A558050D1B82FE30BE75AA23338AE2A3C86E72BE65496FACB18E1838A138B6B` | Hash of actual MSI Center Mystic Light library file. | Identifies the analyzed binary. | High |
+| `Driver_Engine.dll` | Export table | `10002d90`-`100031d0` | Exports Driver initialization, release, port I/O, CMOS, MSR, physical memory, and PCI config helpers. | Confirms MBAPI's resolved export list exists in the actual DLL. | High |
+| `Driver_Engine.dll` | `CreateFileW` import/use | `EXTERNAL:00000099` | Device-open helper constructs `\\.\` plus caller-provided name and calls `CreateFileW`. | User-mode access is through a DOS device path. | High |
+| `Driver_Engine.dll` | `DeviceIoControl` import/use | `EXTERNAL:0000009a` | Multiple internal helpers call `DeviceIoControl` with `0xc350....` constants. | Low-level operations are delegated to a kernel driver. | High |
+| `Driver_Engine.dll` | Driver filenames | `NTIOLib_X64.sys`, `NTIOLib.sys` | Strings are embedded near driver/service setup code. | Candidate kernel driver files used by Driver Engine. | High |
+| `Driver_Engine.dll` | Service-management imports | `CreateServiceW`, `OpenServiceW`, `StartServiceW`, `ControlService`, `DeleteService` | Static imports and decompiled helper paths. | Driver Engine can install/start/stop/delete or reconfigure its kernel service. | High |
+| `Driver_Engine.dll` | Init IOCTL | `0xc350214c` | Initialization helper sends the third init argument to the driver. | Explains MBAPI's `0x2f405a34` initialization constant crossing into the kernel-driver bridge. | High |
+| `Driver_Engine.dll` | Port I/O IOCTLs | `0xc35060cc`, `0xc35060d0`, `0xc350a0d8`, `0xc350a0dc` | Read/write byte/word helpers dispatch via `DeviceIoControl`. | Port access is delegated to the kernel driver, not done inline in user-mode wrappers. | High |
+| `Driver_Engine.dll` | Physical-memory IOCTLs | `0xc3506104`, `0xc350a108` | Physical-memory helpers dispatch via `DeviceIoControl`. | Physical-memory access is delegated to the kernel driver. | High |
+| `Driver_Engine.dll` | PCI config IOCTLs | `0xc3506144`, `0xc350a148` | PCI helpers compute bus/device/function address and dispatch via `DeviceIoControl`. | PCI config access is delegated to the kernel driver. | High |
+| `Driver_Engine.dll` | `NTIOLib_MysticLight` string | Not found | Focused string search returned zero direct hits. | The name is likely supplied by MBAPI/caller context, not embedded in Driver Engine. | High |
+| `Driver_Engine.dll` | Board-specific strings | Not found | No `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, or `ARGB` strings. | Driver Engine appears generic and does not itself identify MS-7E75 Mystic Light routing. | High |
+| MBAPI boundary | Dynamic load | `\Driver_Engine.dll` | Older static pass showed `LoadLibraryA` and `GetProcAddress` resolution. | MBAPI reaches Driver Engine dynamically. | High |
+| MBAPI boundary | `NTIOLib_MysticLight` | MBAPI string | Present in MBAPI-side strings. | Candidate service/device identity passed into Driver Engine. Exact role remains unresolved. | Medium |
+| MBAPI boundary | NCT helpers | MBAPI functions | Calls resolved Driver Engine port I/O pointers. | Explains old NCT helper transport but is not MS-7E75-specific evidence. | High |
+
+## Candidate Driver / Device / IOCTL Paths
+
+Confirmed candidate path shape:
+
+```text
+MBAPI/control layer
+  -> LoadLibraryA("...\Driver_Engine.dll")
+  -> DriverInitialization(serviceOrDeviceName, driverPathOrContext, 0x2f405a34)
+  -> Driver_Engine.dll service setup/open
+  -> CreateFileW("\\\\.\\<caller-provided name>", ...)
+  -> DeviceIoControl(handle, 0xc350...., ...)
+  -> NTIOLib.sys or NTIOLib_X64.sys kernel driver
+```
+
+Candidate service/device names:
+
+- `NTIOLib_MysticLight` is confirmed in MBAPI-side strings.
+- `NTIOLib_MysticLight` is not embedded in direct `Driver_Engine.dll`.
+- The direct DLL accepts service/device names from caller-controlled initialization state.
+
+Candidate driver filenames:
+
+- `NTIOLib.sys`
+- `NTIOLib_X64.sys`
+
+Visible IOCTL families:
+
+- initialization/auth: `0xc350214c`
+- MSR: `0xc3502084`, `0xc3502088`
+- I/O port and CMOS helper path: `0xc35060cc`, `0xc35060d0`, `0xc350a0d8`, `0xc350a0dc`
+- physical memory: `0xc3506104`, `0xc350a108`
+- PCI config: `0xc3506144`, `0xc350a148`
 
 ## Confirmed vs Unknown
 
 Confirmed:
 
-- The MCP-visible active program is an MBAPI/control-layer style DLL, not directly proven to be `Driver_Engine.dll`.
-- The active program dynamically loads a sibling `\Driver_Engine.dll`.
-- The active program resolves Driver Engine exports for I/O port, CMOS, MSR, physical memory, and PCI config operations.
-- The active program calls `DriverInitialization` with magic-looking constant `0x2f405a34`.
-- MBAPI-side NCT helpers use the resolved Driver Engine function-pointer table for port I/O.
-- `NTIOLib_MysticLight` appears as a string in the active program.
-- No hardware access was enabled or run.
+- The actual `Driver_Engine.dll` was analyzed directly by static Ghidra/headless tooling.
+- The DLL exports the low-level functions MBAPI resolves dynamically.
+- The DLL imports and uses `CreateFileW` and `DeviceIoControl`.
+- The DLL imports and uses Service Control Manager APIs.
+- The DLL embeds `NTIOLib.sys` and `NTIOLib_X64.sys`.
+- The DLL constructs a `\\.\<caller-provided-name>` device path.
+- Port I/O, CMOS helper behavior, MSR, physical-memory, and PCI config operations are delegated to a kernel driver through `DeviceIoControl`.
+- Several IOCTL constants are visible.
+- `NTIOLib_MysticLight` is MBAPI-side evidence, not a direct Driver Engine string.
+- No MS-7E75 hardware access was enabled or run.
 
 Unknown:
 
-- Exact `Driver_Engine.dll` exports/imports from the DLL's own export/import tables.
-- Whether `Driver_Engine.dll` itself imports or dynamically resolves `DeviceIoControl`.
-- Exact IOCTL constants, request/response structures, and device handle lifetime.
-- Device object names or DOS device paths opened by `Driver_Engine.dll`.
-- Service names and whether `CreateService`, `OpenService`, or `StartService` are used in `Driver_Engine.dll`.
-- Whether `NTIOLib_MysticLight` is a service name, device name, kernel-driver name, library selector, mutex/registry value, or initialization argument.
-- Whether MS-7E75 uses any of the NCT/Super I/O paths present in the active program.
-- Whether MS-7E75 RGB/fan/sensor control uses Driver Engine, SMBus Engine, EC helpers, USB/HID, ACPI/WMI, or another MSI layer.
+- The exact kernel-driver implementation behind the `0xc350....` IOCTLs.
+- Exact input/output structure layouts for every IOCTL beyond the visible buffer sizes and decompiled call shapes.
+- Whether `NTIOLib_MysticLight` is always the service name, always the device name, or one profile among several caller-provided names.
+- Whether MS-7E75 Mystic Light uses this Driver Engine path for RGB control.
+- Whether MS-7E75 RGB routing uses Driver Engine, SMBus Engine, RTK bridge, CPU Engine, another MSI module, or a combination.
+- Whether any board-specific dispatch exists outside Driver Engine.
 
 ## Open Questions
 
-- Can the actual `Driver_Engine.dll` be loaded as the active Ghidra MCP program for direct inspection?
-- Which MSI Center package version supplied `MBAPI_x86.dll`, `Driver_Engine.dll`, `SMBus_Engine.dll`, and the NTIOLib driver?
-- Does `Driver_Engine.dll` statically import `DeviceIoControl`, or does it resolve it dynamically through `GetProcAddress`?
-- What user-mode device path does Driver Engine open, if any?
-- Is `NTIOLib_MysticLight` the kernel service name, device name, driver filename stem, or a logical driver profile name?
-- What does the `0x2f405a34` initialization constant select or authenticate?
-- Are IOCTL numbers visible as constants in `Driver_Engine.dll`, and can they be grouped by port I/O, physical memory, PCI config, CMOS, and MSR operations?
-- Does `Driver_Engine.dll` install/start a service itself, or does MSI Center install the driver elsewhere?
-- Is the MBAPI x86 layer talking to a 32-bit `Driver_Engine.dll` that then talks to a 64-bit kernel driver on modern Windows?
+- Which caller passes the definitive `DriverInitialization` service/device name and driver path for the installed Mystic Light package?
+- Does the installed service name match `NTIOLib_MysticLight`, or is that only an MBAPI string/profile?
+- Can static analysis of the NTIOLib kernel driver map each `0xc350....` IOCTL to kernel-side handlers?
+- Are the visible physical-memory and PCI config helpers used by Mystic Light paths, or are they generic Driver Engine capabilities exposed to multiple MSI modules?
+- Is any MS-7E75-specific board/profile dispatch present in MBAPI or another companion module rather than Driver Engine?
 
 ## Next Static-Analysis Tasks
 
-- Load `Driver_Engine.dll` directly in Ghidra and make it the active MCP program.
-- Inventory `Driver_Engine.dll` exports and compare them with the `GetProcAddress` list from `FUN_100460d0`.
-- Inventory `Driver_Engine.dll` imports for `CreateFileA/W`, `DeviceIoControl`, `CloseHandle`, `CreateServiceA/W`, `OpenServiceA/W`, `StartServiceA/W`, `OpenSCManagerA/W`, `GetProcAddress`, and `LoadLibraryA/W`.
-- Search `Driver_Engine.dll` strings for `NTIOLib_MysticLight`, `NTIOLib`, `.sys`, `\\.\`, `\Device\`, service names, registry service paths, and IOCTL/debug labels.
-- Decompile `DriverInitialization`, `DriverRelease`, `ReadIoPortByte`, `WriteIoPortByte`, physical-memory helpers, and `PCIConfigRead`/`PCIConfigWrite`.
-- Identify any `DeviceIoControl` call wrappers and record IOCTL constants, buffer shapes, and operation selectors from static code only.
-- Cross-check whether Driver Engine embeds a driver resource or only opens an already installed NTIOLib service.
-- Keep MS-7E75 hardware support disabled unless separate, board-specific evidence later justifies a reviewed profile proposal.
+- Cross-reference MBAPI call sites that provide the first two `DriverInitialization` arguments.
+- Statically inspect any installed `NTIOLib.sys` / `NTIOLib_X64.sys` files, if present, for IOCTL dispatch tables and device-name creation.
+- Continue comparing MBAPI, SMBus Engine, RTK bridge, CPU Engine, and other Mystic Light modules for board-specific MS-7E75 routing.
+- Keep MS-7E75 support disabled until a separate static evidence chain identifies a board-specific, reviewed transport path.
 
 ## Explicit Hardware-Access Note
 
