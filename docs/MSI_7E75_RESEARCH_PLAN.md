@@ -48,7 +48,9 @@ Phase 1 - Static information only:
 
 Next static-only targets:
 
-- Decompile `LEDKeeper2.exe` IL around `RGBControlClass.updateSupportedDevice`, `Init_MB_Adv_v1/v2`, `MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, `MSI_7B10Led.CheckSupportMethod`, `IsSupportJARGB_V2`, `JARGB_V2_Detect`, and the `Support list`, `ResetItem`, and `[RGBControlClass] mbID` log-string call sites.
+- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` decode path to statically decode both installed `Mystic Light Online Data.dat` files and search decrypted `[SyncData]` / `[Motherboard]` records for MS-7E75.
+- Decompile `CLEDParser` and related data classes around `CheckSupportDevice`, `VerifySupportDevice`, `List_PartItem`, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
+- Decompile `C_Encrypt.DecryptBase64` to document the exact `!!MSI!!` online-data transform.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
 - Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.

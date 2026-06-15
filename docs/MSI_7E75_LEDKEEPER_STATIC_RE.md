@@ -4,15 +4,13 @@ Status: static analysis only, hardware access disabled.
 
 ## Scope
 
-This document records a static-only pass over:
+This document records static-only analysis of:
 
 ```text
 C:\Program Files (x86)\MSI\MSI Center\Mystic Light\LEDKeeper2.exe
 ```
 
-The goal was to look for MS-7E75 / B850 GAMING PLUS WIFI PZ board/profile/zone dispatch evidence, including `7E75`, `MS-7E75`, `MS-7E75_1`, JRGB/JRAINBOW/JARGB/JARGB_V2 zone strings, `RGBControlClass`, profile/config filenames, online data references, and MBAPI/SMBus/Driver/EC/SIO/Renesas route clues.
-
-Evidence came from PE metadata, .NET reflection-only metadata loading, manifest/resource names, P/Invoke metadata, and raw ASCII/UTF-16 string searches. This pass did not execute MSI software.
+The goal was to inspect profile/zone dispatch logic for MSI MS-7E75 / B850 GAMING PLUS WIFI PZ without executing MSI software or touching hardware. The pass focused on `MSI_LED.MB`, `RGBControlClass`, `Class_Fun_MB`, `Class_ParseCfg`, `MSI_7B10Led`, `Class_MB_800`, and nearby profile/control classes required to explain profile loading and `ResetItem` logs.
 
 ## Safety Constraints
 
@@ -30,6 +28,17 @@ Evidence came from PE metadata, .NET reflection-only metadata loading, manifest/
 - No MS-7E75 transport or register map is claimed unless evidence is specific.
 - No MS-7E75 behavior is inferred from the existing 7A45 profile.
 
+## Tooling And Method
+
+| Tool/method | Use |
+| --- | --- |
+| `Get-FileHash` | SHA-256 and file metadata for `LEDKeeper2.exe`. |
+| Reflection-only .NET metadata | Assembly identity, type names, methods, fields, resources, and P/Invoke metadata without executing the target assembly. |
+| `ilspycmd` 10.1.0.8386 | Static C# decompilation of selected .NET types. Installed into local `.tools/` and not committed. |
+| Raw ASCII/UTF-16 string searches | Negative/positive confirmation for board IDs, profile strings, and path strings. |
+
+No MSI binary was launched. ILSpy read the assembly as data.
+
 ## Analyzed Binary And Hash
 
 | Field | Value |
@@ -45,107 +54,111 @@ Evidence came from PE metadata, .NET reflection-only metadata loading, manifest/
 | CLR header | Present |
 | Manifest resources | `LEDKeeper2.g.resources`, `MSI_LED.Properties.Resources.resources` |
 
-## Evidence Table
+## Class/Method Evidence Table
 
-| Source | Evidence | MS-7E75 relevance | Limitations |
+| Class/method | Decompile evidence | Relevance | Limitations |
 | --- | --- | --- | --- |
-| PE/.NET metadata | `LEDKeeper2.exe` is an x86 .NET Framework 4.8 assembly with only `_CorExeMain` in the native import table. | Analysis should treat most logic as managed metadata/IL rather than native imports. | This pass did not recover full IL control flow. |
-| Assembly references | References include `MLModule`, `MysticLight_AllDevice`, `SyncData`, `System.Management`, `websocket-sharp`, device APIs, and several Mystic Light companion assemblies. | Confirms LEDKeeper is a high-level Mystic Light orchestration executable. | References do not identify an MS-7E75 hardware route by themselves. |
-| Manifest resources | Embedded resources are `LEDKeeper2.g.resources` and `MSI_LED.Properties.Resources.resources`. | Confirms WPF/application resource presence and localized Mystic Light strings. | No decoded MS-7E75 profile table was found in resource names or simple strings. |
-| `MSI_LED.MB` metadata | Managed P/Invoke wrapper points to `Lib\MBAPI_x86.dll` for `SupportLED`, `LEDControl`, `LEDMysticControl`, many `SetMystic*` calls, `RenesasLEDControlV3`, `KeepRenesasLED`, `SetSIOGPIO`, `SetECSpace`, `SetECRAM_*`, `SMBus_Initial`, and other helpers. | Confirms LEDKeeper delegates motherboard LED/control work through MBAPI and exposes several possible route families. | P/Invoke presence is generic. It does not tie MS-7E75 to SMBus, Renesas, EC, SIO, or any register map. |
-| `MSI_LED.Class_Fun_MB` metadata | Wrapper methods mirror MBAPI motherboard operations: `Compare_Support_MB`, `Init_MB`, `LEDMysticControl*`, `SetMystic*V2`, `RenesasLEDControlV3`, `ControlFANLED`, and related calls. | Candidate high-level motherboard dispatch wrapper. | No `7E75`-specific branch or map was recovered from this metadata pass. |
-| `MSI_LED.RGBControlClass` metadata | Methods include `updateSupportedDevice`, `Init_MB_Adv_v1`, `Init_MB_Adv_v2`, private `MB_SetRGB`, device-specific `*_SetRGB`, `Init`, `RGBControl`, and server methods. Fields include `bIsMSI800sLED`, `bIsMSI7B10LED`, `bIsMSI7D26LED`, and support booleans. | Strong candidate for support/profile/device dispatch; matches log prefix `[RGBControlClass]`. | Static strings include `[RGBControlClass] mbID ` but no decoded `7E75` value. |
-| `MSI_LED.MSI_7B10Led` metadata | Despite the class name, support enums include many board IDs through `MS_7E74`; methods include `CheckSupportMethod`, `IsSupportMixEffect`, `IsSupportJARGB_V2`, `Set_AllBoard`, `Get_AllBoard`, `JARGB_V2_Detect`, `JARGB_Apply`, and Gen1/per-LED helpers. | Candidate board/profile/zone dispatch class for many modern MSI boards and JARGB V2 support. | Its visible support lists do not include `MS_7E75`. It cannot be claimed as the MS-7E75 path from this evidence. |
-| `MSI_LED.MSI_7B10Led+SupportList` | Contains IDs including `MS_7E01`, `MS_7E03`, `MS_7E06`, `MS_7E07`, `MS_7E09`, `MS_7E10`, `MS_7E12`, and older `7Dxx` boards. | Shows LEDKeeper embeds board-ID dispatch lists adjacent to LED support logic. | `MS_7E75` is absent. |
-| `MSI_LED.MSI_7B10Led+SupportList_CommonID` | Contains `MS_7E00`, `MS_7E11`, `MS_7E12`, `MS_7E13`, `MS_7E14`, `MS_7E16`, `MS_7E18`, `MS_7E23`, `MS_7E24`, `MS_7E25`, `MS_7E26`, `MS_7E27`, `MS_7E28`, `MS_7E29`, `MS_7E30`, `MS_7E31`, `MS_7E36`, `MS_7E37`, `MS_7E46`, and `MS_7E74`. | Shows a separate common-ID dispatch table for modern boards. | `MS_7E75` is absent; `MS_7E74` proximity is not proof for `MS_7E75`. |
-| `MSI_LED.MSI_7B10Led+SupportList_JARGB_V2` | Contains many `7Dxx` and `7Exx` entries through `MS_7E74`; paired metadata exposes `IsSupportJARGB_V2`, `JARGB_V2_Detect`, and `JARGB_Apply`. | Strong static evidence that LEDKeeper has JARGB V2 support gating for some motherboard IDs. | `MS_7E75` is absent. No MS-7E75 JARGB V2 dispatch is proven. |
-| `MSI_LED.MSI_7D26Led` metadata | Support list includes `MS_7D26`, `MS_7D68`, `MS_7D85`, plus JARGB V2 and board-setting methods similar to `MSI_7B10Led`. | Another board-family dispatch implementation pattern. | No MS-7E75 evidence. |
-| `MSI_LED.MSI_800sLed` / `MSI_LED.MSI_B921Led` metadata | Methods expose Gen1/Gen2 board and strip operations such as `Gen1_ApplyBoard`, `Gen2_Detect`, `Gen2_ApplyPort`, and target-port enums with `JARGB1`, `JARGB2`, `JARGB3`. | Shows LEDKeeper contains USB/common-device style Gen1/Gen2 ARGB logic. | No board-specific tie to MS-7E75. |
-| Raw strings | `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` appear as UTF-16 strings at offsets `0x2F0FCF`, `0x2F0FE5`, and `0x2F0FFB`. Related strings include `SetJARGB_V2_1`, `SetJARGB_V2_2`, `SetJARGB_V2_3`, and `MB_JARGB_V2_Info1/2/3`. | Static source for the same style of zone names seen in existing logs, except logs pair them with MS-7E75. | These strings are generic MB/JARGB V2 names and do not prove MS-7E75 routing. |
-| Raw strings | `JRGB1`, `JRGB2`, `JRAINBOW1`, `JRAINBOW2`, and cycle-number strings are present. | Static source for generic motherboard header/zone vocabulary. | The log-specific `JRGB1` hit is consistent, but no MS-7E75 pairing was found. |
-| Raw strings | `[RGBControlClass] Constructor`, `[RGBControlClass] mbID `, and many `[RGBControlClass] ...` log strings are embedded. | Confirms that existing log prefix `[RGBControlClass] mbID 7E75` can plausibly originate from LEDKeeper code. | The literal `7E75` value is not embedded next to this string in LEDKeeper. |
-| Raw strings | `Support list : ` appears as UTF-16 at offsets `0x2FED29` and `0x2FF51A`. `ResetItem : ` appears at `0x306733`; `Finish ResetItem : ` appears at `0x306863`. | Confirms LEDKeeper embeds the log message templates seen in existing Mystic Light logs. | The actual runtime list value `MS-7E75_1` is not embedded in this executable. |
-| Raw strings | `Data\Mystic Light Online Data.dat`, `Mystic Light\Mystic Light Online Data.dat`, `using main online data`, `using backup online data`, and `not found online data` are present. | Confirms LEDKeeper directly knows the online-data blob filenames and selection fallback messages. | The blob format remains undecoded; no MS-7E75 record was extracted here. |
-| Raw strings | `\Profile\`, `MSI\MSI Center\Mystic Light\Profile\`, `ProfileInfo.cfg`, `Profile_v2.txt`, and `CurrentProfileIndex` are present. | Confirms LEDKeeper uses profile/config files separate from the executable. | No `Profile\*.tmp` or `loader.tmp` literal was found in `LEDKeeper2.exe`. |
-| Raw strings | `Global\Access_SMBUS.HTP.Method` appears; method names include `SMBus_Initial` and `SetSMBusControl`. | Confirms an SMBus-related synchronization/name string and MBAPI-style SMBus calls are visible in LEDKeeper. | No `SMBus_Engine.dll` literal was found in LEDKeeper and no MS-7E75 SMBus route is proven. |
-| Raw strings | `RenesasLEDControlV3`, `KeepRenesasLED`, `Device_Renesas_Fan`, and `RenesasMusicValumnTrans` are present. | Confirms Renesas-related call names are visible in the managed layer. | Generic; no MS-7E75 Renesas controller or address proof. |
-| Raw strings | `SetSIOGPIO`, `SetSIO5567SLEDColor`, `CheckECRAM`, `SetECRAM_Mode`, and `SetECRAM_Color` are present. | Confirms EC/SIO paths are also exposed to LEDKeeper. | Generic; no MS-7E75 EC/SIO register proof. |
-| Negative string search | No literal `7E75`, `MS-7E75`, `MS-7E75_1`, or `B850` was found in `LEDKeeper2.exe`. | Important boundary for claims: LEDKeeper has generic dispatch machinery and log templates, but not the known board ID in cleartext. | The value could be computed, loaded from MBAPI, online data, profile blobs, WMI/DMI, registry, or another module. |
+| `MSI_LED.MB` | Internal static P/Invoke wrapper with `MB_DLL_FileName = "Lib\\MBAPI_x86.dll"` and 94 imported methods. | Confirms LEDKeeper routes motherboard LED/support, Renesas, SMBus, EC, SIO, DRAM, Realtek SSD, and Sonix DDR calls through MBAPI. | Generic MBAPI boundary only; no MS-7E75-specific transport/register map. |
+| `Class_Fun_MB.GetWMI` | Parses MSI board strings from WMI/system product data. If product contains `(MS-...)`, sets `MB_Info.Market` to text before `(MS-...)` and `MB_Info.Product` to the `MS-...` token. | Static source for `MB_Info.Product = MS-7E75` and market name when WMI/DMI string is `B850 GAMING PLUS WIFI PZ (MS-7E75)`. | Uses runtime OS/WMI data; no hardware register proof. |
+| `Class_Fun_MB.Compare_Support_MB` | Checks `App.ParseCfg.List_SyncData` for either `WMI_MB_Info.Product + "_" + WMI_MB_Info.Version.Substring(0, 1)` or `MB_Info.Market`. | Explains how online/config `SyncData` can gate board support before profile token construction. | Requires decoded online data at runtime; this pass did not decode an MS-7E75 record. |
+| `Class_Fun_MB.Init_MB` | Calls `MB.CheckMBVersion(MB_Info.Product, MB_Info.Version, MB_Info.Market, "T")` and stores `Init_MB_Status`. | Confirms MBAPI receives product/version/market for motherboard initialization/support. | Does not show MBAPI's internal 7E75 dispatch. |
+| `Class_Fun_MB` Renesas wrappers | Methods such as `LEDMysticControlV2`, `SetMysticBreathingModeV2`, `SetMysticLEDColorV2`, and `SetMysticRainbowModeV2` call `RenesasLEDControlV3` with fixed command-like numeric values. | Confirms a generic Renesas-style MBAPI wrapper family exists in LEDKeeper. | Not tied to MS-7E75. Numeric arguments are not a board register map. |
+| `App` startup support flow | Calls `ParseCfg.ParseCfgFile()`, `Compare_Support_MB()`, `Init_MB()`, builds `TestData`, logs `Support list : ...`, initializes profile state, and starts registry watchers. | Confirms support-list logging and profile setup are LEDKeeper code paths. | Runtime inputs decide the actual list. |
+| `App` profile-token construction | Generic code adds either `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1) + "_" + MB_Info.Market` for special matches or `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1)` otherwise. | Explains how `MS-7E75_1` can be generated indirectly from `MB_Info.Product = MS-7E75` and version beginning with `1`, without a cleartext `MS-7E75_1` literal. | Token construction is profile/support evidence, not backend/register evidence. |
+| `App.mbID` | Static `ushort mbID`; startup sets it with `Convert.ToUInt16(MB_Info.Product.Substring(MB_Info.Product.IndexOf("MS-") + 3), 16)`. | Explains how `7E75` can be generated indirectly from `MS-7E75`. | Does not prove that `7E75` passes later LEDKeeper enum/device dispatch. |
+| `RGBControlClass.updateSupportedDevice` | Searches incoming supported-device data for `MS-7`, logs `[RGBControlClass] mbID ` plus four hex digits, converts those four digits to `ushort`, then dispatches through `MSI_7B10Led.SupportList_CommonID`, `MSI_7B10Led.SupportList`, `MSI_7D26Led.SupportList`, or `MSI_800sLed.CheckConnectedDevice`. | Static source for `[RGBControlClass] mbID 7E75` log style. | `MS_7E75` is absent from visible LEDKeeper support enums, so this does not prove a 7E75 LEDKeeper device path. |
+| `RGBControlClass.Init_MB_Adv_v1` | Initializes `App.Device_7B10` or `App.Device_7D26`, checks `IsSupportJARGB_V2`, optionally runs `JARGB_V2_OnlyDetect` and `JARGB_SwitchToGen1` for ports `0..2`, reads current LED settings, and sets default style/sync state. | Candidate modern motherboard MCU/JARGB V2 init path. | Not reached for MS-7E75 unless a static/runtime source maps it into the supported enum/device path. |
+| `RGBControlClass.Init_MB_Adv_v2` | Uses `MSI_800sLed` Gen2 target ports, `Gen2_Detect`, `Gen2_SetEnableGen2(false)`, and Gen1 board settings. | Candidate MB800/common-device Gen2 ARGB path. | No MS-7E75 tie found. |
+| `MSI_7B10Led` support enums | `SupportList_CommonID`, `SupportList`, `SupportList_MixEffect`, and `SupportList_JARGB_V2` include many `7Dxx` and `7Exx` IDs, including nearby `MS_7E74 = 32372`. | Confirms static dispatch tables exist and include modern board IDs. | No `MS_7E75 = 32373` entry was found. |
+| `MSI_7B10Led.IsDeviceConnect` | For `SupportList_CommonID`, opens common HID VID/PID `3504,118` and compares the HID serial-number prefix to the requested board ID. For `SupportList`, opens MSI VID `5218` with PID equal to the board ID. | Explains why some board IDs are common-device dispatch rather than direct PID only. | HID/open behavior was only read from static code; it was not run. No MS-7E75 entry. |
+| `MSI_7B10Led.CheckSupportMethod` | Similar common-ID/direct-ID static logic; reads HID feature data buffers. | Candidate table consumer for board support method selection. | Not an MS-7E75 proof. |
+| `MSI_7B10Led.IsSupportJARGB_V2` | Checks whether `PID` is in `SupportList_JARGB_V2`, with a special `7D36`/`Z790` fallback. | Static JARGB V2 support gate. | `MS_7E75` absent. |
+| `Class_ParseCfg.ParseCfgFile` | Reads MSI Center `Component\SDK\WorkDir`, selects `Data\Mystic Light Online Data.dat` or `Mystic Light\Mystic Light Online Data.dat`, strips the first 7 characters, decrypts with `C_Encrypt.DecryptBase64(..., 232345599.ToString("X"))`, and extracts `[Motherboard]`, `[Graphics]`, `[GraphicsNumber]`, and `[SyncData]` sections. | Confirms online data is a real static input for support/profile selection and identifies the decode function/key expression. | The decrypted installed blob was not decoded in this pass; no MS-7E75 record extracted here. |
+| `ProfileFunction` | `SavePath` is Windows-drive root plus `MSI\MSI Center\Mystic Light\Profile\`; `SaveName = "Profile_v2.txt"`. `LoadProfile` creates/reads JSON profile data. `CheckProfile` and `GetDeviceSetting` read `ProfileInfo.cfg` section/key `CurrentProfileIndex/Index`. | Confirms `Profile_v2.txt` and `ProfileInfo.cfg` profile flow. | No `Profile\*.tmp` or `loader.tmp` reference found in decompiled target classes. |
+| `CControl.ResetItem` | Logs `ResetItem : <index> (<ShowName>) <StyleSelectIndex>` and proofing messages, then applies per-chipset reset logic. | Static source for runtime log lines such as `ResetItem : 1 (JARGB_V2_1) 10`. | The actual `ShowName` list comes from parsed profile/support data, not a hard-coded MS-7E75 table in this method. |
+| `CControl.StartWatcher` | Creates a WMI `RegistryValueChangeEvent` watcher for `...\LED` value `MB_JARGB_V2`. | Confirms registry event flow for JARGB V2 setting changes. | Registry watching was not run. |
+| `Class_MB_800.GetCycleNumber` | Maps device IDs containing `JARGB_V2_1`, `_2`, `_3`, or `EZ Conn` to ports 1..4 and falls back to `JRAINBOW*_CycleNumber` registry keys when Gen2 data is unavailable. | Static zone-name-to-port evidence. | MB800 path is not proven for MS-7E75. |
+| `Class_MB_800.UpdateJARGB_V2_Basic` | Uses `App.listFixIDJARGBGen2[port]`, `App.listLEDNumJARGBGen2[port]`, registry `MB_JARGB_V2_Info{port+1}`, and `MSI_800sLed.Gen2_SetStrip` / `Gen2_ApplyPort`. | Static evidence for Gen2 strip/port construction. | No MS-7E75 tie. |
+| `Class_MB_800.SetStyle` | For `JARGB_V2_1/2/3`, writes registry value `MB_JARGB_V2` to `SetJARGB_V2_1/2/3`, reads `MB_JARGB_V2_Info1/2/3`, and calls `UpdateJARGB_V2_Basic`. | Confirms the `JARGB_V2_1/2/3` profile strings drive JARGB V2 port handling in this path. | Applies to MB800/common-device path only unless tied to MS-7E75 later. |
 
-## Board/Profile/Zone Hits
+## P/Invoke Table For `MSI_LED.MB`
 
-Confirmed in `LEDKeeper2.exe`:
+All entries import from `Lib\MBAPI_x86.dll`.
 
-- Generic motherboard wrapper classes: `MSI_LED.MB`, `MSI_LED.Class_Fun_MB`, `MSI_LED.RGBControlClass`.
-- MBAPI P/Invoke target: `Lib\MBAPI_x86.dll`.
-- Generic board support enums, especially `MSI_LED.MSI_7B10Led+SupportList`, `SupportList_CommonID`, `SupportList_MixEffect`, and `SupportList_JARGB_V2`.
-- Visible board IDs up to nearby `MS_7E74` in `MSI_LED.MSI_7B10Led` support lists.
-- Header/zone strings: `JRGB1`, `JRGB2`, `JRAINBOW1`, `JRAINBOW2`.
-- JARGB V2 strings: `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, `SetJARGB_V2_1`, `SetJARGB_V2_2`, `SetJARGB_V2_3`, `MB_JARGB_V2_Info1`, `MB_JARGB_V2_Info2`, `MB_JARGB_V2_Info3`.
-- Log templates: `Support list : `, `ResetItem : `, `Finish ResetItem : `, `[RGBControlClass] mbID `.
-- Online/config filenames: `Data\Mystic Light Online Data.dat`, `Mystic Light\Mystic Light Online Data.dat`, `ProfileInfo.cfg`, `Profile_v2.txt`, and `MSI\MSI Center\Mystic Light\Profile\`.
+| Group | Methods |
+| --- | --- |
+| Board/platform | `CheckMBVersion(string _csMB, string _csMBVer, string _csMBMarket, string _csMBSIOInit)`, `GetDRAMInfo3(...)`, `InitialDDRTIMING(bool bFirstRun = true)`, `Check_IsDDR5()`, `GetCPUTemp()`, `GetCPU_GameBoostSec(ref int sec)`, `GetCPU_MaxRatio(ref int ratio)`, `GetSIO_DefaultWhite(ref bool defWhite)` |
+| Basic motherboard LED | `SupportLED()`, `LEDControl(int ledmode)`, `LEDBOTControl(int ledmode)`, `LEDMysticControl(int ledmode)`, `LEDAudioControl(int ledmode)`, `ResetLED()`, `CloseLEDControl(bool bBackToDefault)`, `SetLEDModelName(int model)`, `SetExtendSequence(int mode)` |
+| Mystic/basic effects | `SetBreathingMode()`, `SetMysticBreathingMode()`, `SetAudioBreathingMode()`, `SetFlashingMode()`, `SetMysticFlashingMode()`, `SetAudioFlashingMode()`, `SetDualBlinkingMode()`, `SetRainbowMode()`, `SetRainbowBreathingMode()`, `SetRainbowFlashingMode()`, `SetMysticDualBlinkingMode()`, `SetAudioDualBlinkingMode()`, `SetMysticMarqueeMode()`, `SetMysticRainbowMode()`, `SetMysticMeteorMode()`, `SetMysticLightningMode()`, `SetMysticSequenceMode(int mode)`, `SetColorMode(int R, int G, int B)`, `SetColorMode3(int R, int G, int B)`, `SetMysticLEDColor(int R, int G, int B)`, `SetMusicLED(bool mystic, bool on, int mode)`, `SetMusicVolumeV2(int left, int right)` |
+| Renesas-style helpers | `RenesasLEDControlV3(int index70, int index71, int index80, int index81, int index82, int index83, int cmd, int data, int r, int g, int b, int e0, int e1, int e2, int e3, int e5)`, `KeepRenesasLED()` |
+| LAN/fan/BT LED | `CheckLANLED()`, `ControlLANLED(int value)`, `ControlFANLED(int value)`, `ControlBTLED(int value)`, `CheckBTLED()` |
+| DRAM LED vendors | `ControlKingStonDRAMLED(int r, int g, int b, int speed, int style)`, `ControlKingStonDRAMLED_X299(int offset, int data)`, `ControlCorsairDRAMLED(...)`, `SetCorsairDRAMLED(int mode)`, `ControlCorsairProDRAMLED(...)`, `CorsairProDRAMSync()`, `ControlGALAXDRAMLED(int style, int r, int g, int b)`, `ControlGALAXDRAMLED_Byte(int data0, int data1, int data2, int data3)`, `ControlMICRONDRAMLED(int style, int r, int g, int b)` |
+| DRAM helper APIs | `GSKDDR_CheckMAVERIK()`, `GSKDDR_Initial()`, `Micron_Initial(out byte Out_Micron_DDR_Type)`, `KINGSTON_Initial()`, `GSKDDR_RainbowStop()`, `GSKDDR_MeteorStop()`, `GSKDDR_MarqueeStop()`, `GSKDDR_LoopStop()`, `ITEDDR_LoopStop()`, `GSKDDR_ONOFF(int ledmode)`, `GSKDDR_Change(...)`, `GSKDDR_Change_PerLed(...)`, `GSKDDR_MSI_Style(...)`, `GetAURAInfo(...)`, `ITEDDR_Change(...)`, `GetITEInfo(...)`, `KingstonDDR5_Change(...)`, `Micron_DDR4_Change(...)`, `IT8295QFN_OP(int mode, int r, int g, int b, int addr)` |
+| EC/SIO/SMBus | `SMBusControl(int addr, int offset, int data)`, `SetSIOGPIO(int Grop, int Sel, int Data)`, `SetECSpace(int Page, int Index, int Data)`, `GetECSpace(int Page, int Index, out int data)`, `SetECRAM_Mode(int mode)`, `SetECRAM_Color(byte r, byte g, byte b)`, `CheckECRAM(out bool data)`, `SetSIO5567SLEDColor(int R, int G, int B)`, `SMBus_Initial()`, `ReleaseDll()` |
+| Storage/other LED | `RealtekSSD_Initial()`, `RealtekSSD_Release()`, `RealtekSSD_SetStyle(...)`, `RealtekSSD_AllSync(...)`, `SonixDDR_Initial()`, `SonixDDR_SetColor(...)`, `SonixDDR_SetVolume(...)`, `SonixDDR_SetLed1Led2Color(...)`, `SonixDDR_GetModuleInfo(...)`, `SonixDDR_LoopStop()` |
 
-Not found in `LEDKeeper2.exe` cleartext:
+This table is generic MBAPI surface evidence. It does not prove MS-7E75 uses any specific imported method.
 
-- `7E75`
-- `MS-7E75`
-- `MS-7E75_1`
-- `B850`
-- `GAMING PLUS` for the target board. `MPG B550 GAMING PLUS` and `MPG Z490 GAMING PLUS` are present, but they are unrelated older-board strings.
-- `SMBus_Engine.dll`
-- `Driver_Engine.dll`
-- `NTIOLib`
-- `Profile\*.tmp`
-- `loader.tmp`
+## Profile And Config Loading Evidence
 
-## Candidate Dispatch Functions/Tables
+- `Class_ParseCfg.ParseCfgFile` reads MSI Center `Component\SDK\WorkDir` from registry, then selects the newer or available copy of `Data\Mystic Light Online Data.dat` and `Mystic Light\Mystic Light Online Data.dat`.
+- The online data parser strips the first seven characters, matching the known `!!MSI!!` header length, then calls `C_Encrypt.DecryptBase64` with key expression `232345599.ToString("X")`.
+- `ParseCfgFile` extracts `[Motherboard]`, `[Graphics]`, `[GraphicsNumber]`, and `[SyncData]` sections. `Class_Fun_MB.Compare_Support_MB` later consumes `List_SyncData`.
+- `ProfileFunction` stores profile JSON in `MSI\MSI Center\Mystic Light\Profile\Profile_v2.txt` under the Windows drive root and reads current profile index from `ProfileInfo.cfg` key `CurrentProfileIndex/Index`.
+- No decompiled target class referenced `Profile\*.tmp` or `loader.tmp` by literal name.
 
-| Candidate | Why it matters | Current status |
-| --- | --- | --- |
-| `MSI_LED.RGBControlClass.updateSupportedDevice` | Likely builds supported-device state; class contains support booleans and log templates matching existing runtime logs. | Candidate only; no MS-7E75 branch recovered. |
-| `MSI_LED.RGBControlClass.Init_MB_Adv_v1` / `Init_MB_Adv_v2` | Likely selects older vs advanced motherboard LED behavior. | Candidate only. |
-| `MSI_LED.RGBControlClass.MB_SetRGB` | Private motherboard SignalRGB/set path, with nested compiler-generated methods. | Candidate only. |
-| `MSI_LED.Class_Fun_MB.Compare_Support_MB` / `Init_MB` | Managed wrapper around motherboard support and MBAPI setup. | Candidate only. |
-| `MSI_LED.MB.SupportLED` and related P/Invoke methods | Direct MBAPI boundary for support detection and Mystic Light operations. | Confirmed generic MBAPI boundary; not board-specific. |
-| `MSI_LED.MSI_7B10Led.CheckSupportMethod` | Static support-list selector for many modern board IDs, including nearby `7E**` IDs. | Strong candidate table consumer; `MS_7E75` absent. |
-| `MSI_LED.MSI_7B10Led.IsSupportJARGB_V2` | Likely consumes `SupportList_JARGB_V2`. | Strong candidate for JARGB V2 feature gating; `MS_7E75` absent. |
-| `MSI_LED.MSI_7B10Led.Set_AllBoard` / `Get_AllBoard` | Candidate board state serialization methods for LED settings. | Candidate only. |
-| `MSI_LED.MSI_7B10Led.JARGB_V2_Detect` / `JARGB_Apply` / `JARGB_SwitchToGen1` | Candidate JARGB V2 zone construction and apply path. | Candidate only. |
-| `MSI_LED.Class_MB_800.SetStyle` / `UpdateJARGB_V2_Basic` | Higher-level MB 800/JARGB V2 UI-style application path. | Candidate only. |
-| `MSI_LED.CControl.ResetItem` compiler-generated methods | Log string call site for `ResetItem`. | Outer type was not fully loaded by this reflection-only pass; raw metadata/string evidence confirms method-template presence. |
-| `MSI_LED.Class_ParseCfg.ParseCfgFile` | Candidate parser for online/support/config data. | Candidate only. |
+## Zone Construction Evidence
+
+- `CControl.ResetItem` logs the `ShowName` of `CLEDParser.List_PartItem[In_ItemIndex]`. This explains log lines with `JRGB1` and `JARGB_V2_1/2/3` once those show names are present in parsed device/profile data.
+- `Class_MB_800.GetCycleNumber` maps `JARGB_V2_1`, `_2`, `_3`, and `EZ Conn` to logical ports 1..4.
+- `App` reads registry keys `MB_JARGB_V2_Support1` through `MB_JARGB_V2_Support4` to set `bSupportJARGBGen2Port1..4`, `currentJARGB_Gen2`, fixed IDs, and LED counts.
+- `Class_MB_800.UpdateJARGB_V2_Basic` reads `MB_JARGB_V2_Info{n}` entries as comma-separated 21-field strip records, builds `MSI_800sLed.Struct_Gen2StripSetting`, calls `Gen2_SetStrip`, then calls `Gen2_ApplyPort`.
+- `Class_MB_800.SetStyle` writes `MB_JARGB_V2 = SetJARGB_V2_1/2/3/4` for advanced port changes and reads the matching `MB_JARGB_V2_Info{n}` data.
+- `RGBControlClass.Init_MB_Adv_v1` detects JARGB V2 via `Device_7B10.IsSupportJARGB_V2()` or `Device_7D26.IsSupportJARGB_V2()` and runs per-port `JARGB_V2_OnlyDetect` / `JARGB_SwitchToGen1`.
+
+## `7E75` / `MS-7E75_1` Findings
+
+Confirmed:
+
+- `LEDKeeper2.exe` still has no cleartext `7E75`, `MS-7E75`, `MS-7E75_1`, or `B850` after decompilation and recursive text search of decompiled output.
+- `Class_Fun_MB.GetWMI` can derive `MB_Info.Product = MS-7E75` from a runtime system product string containing `(MS-7E75)`.
+- `App` can derive `App.mbID = 0x7E75` from `MB_Info.Product` using substring extraction and hex conversion.
+- `App` can construct `MS-7E75_1` generically as `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1)`.
+- `RGBControlClass.updateSupportedDevice` can parse and log `[RGBControlClass] mbID 7E75` from incoming supported-device text containing `MS-7E75`.
+
+Not confirmed:
+
+- No static LEDKeeper support enum contains `MS_7E75`.
+- No static LEDKeeper switch/case specifically names `7E75`.
+- No decompiled LEDKeeper method maps MS-7E75 to SMBus, Renesas, EC, SIO, HID, USB, or MB800.
+- No MS-7E75 SMBus address, EC offset, SIO register, HID report, IOCTL sequence, command payload, or register map was found.
 
 ## Confirmed Vs Unknown
 
 Confirmed:
 
-- `LEDKeeper2.exe` is a managed x86 .NET Framework 4.8 Mystic Light orchestration executable.
-- It statically references `Lib\MBAPI_x86.dll` through P/Invoke for motherboard LED/support, Renesas, EC, SIO, SMBus initialization, and other hardware-adjacent helpers.
-- It contains `RGBControlClass` log templates matching existing log prefix style.
-- It contains `Support list : ` and `ResetItem : ` log templates matching existing Mystic Light logs.
-- It contains generic JRGB/JRAINBOW/JARGB V2 zone strings, including `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3`.
-- It contains profile and online-data filenames, including `Mystic Light Online Data.dat`, `ProfileInfo.cfg`, and `Profile_v2.txt`.
-- It contains embedded board support enums for many older and modern board IDs, including nearby `MS_7E74`.
+- LEDKeeper has a decompiled MBAPI P/Invoke boundary through `MSI_LED.MB`.
+- LEDKeeper can generate `MS-7E75_1` and `7E75` indirectly from runtime board identity strings.
+- LEDKeeper consumes encrypted/base64-like Mystic Light online data through `Class_ParseCfg`.
+- LEDKeeper stores/loads user profile data through `Profile_v2.txt` and `ProfileInfo.cfg`.
+- LEDKeeper contains generic JRGB/JRAINBOW/JARGB V2 zone handling and JARGB V2 registry/port logic.
+- LEDKeeper contains static modern-board dispatch lists near `MS_7E75`, including `MS_7E74`, but not `MS_7E75`.
 
 Unknown:
 
-- Which static source creates `MS-7E75_1`.
-- Which static source pairs MS-7E75 with `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3`.
-- Whether MS-7E75 is intentionally absent from LEDKeeper support enums because it is supplied by online data, MBAPI, `MLModule.dll`, `MysticLight_AllDevice.dll`, encoded profile blobs, registry, or another runtime source.
-- Which function consumes the real MBAPI `7E75` board-ID list hit.
-- Whether MS-7E75 motherboard headers use SMBus/Renesas, EC, SIO, USB/HID/common-device, ACPI/WMI, or another transport.
-- Any MS-7E75 SMBus address, EC offset, SIO register, USB report, IOCTL sequence, command payload, or register map.
+- Whether the installed `Mystic Light Online Data.dat` contains an MS-7E75 `[SyncData]` or profile record.
+- Whether MBAPI's static `7E75` board-list hit is the source that approves MS-7E75 support.
+- Which module creates the final `CLEDParser.List_PartItem` records for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` on MS-7E75.
+- Whether MS-7E75 lighting uses SMBus/Renesas, EC, SIO, USB/HID/common-device, ACPI/WMI, or another transport.
 
 ## Next Static-Only Targets
 
-- Decompile `LEDKeeper2.exe` IL around `RGBControlClass.updateSupportedDevice`, `RGBControlClass.Init_MB_Adv_v1`, `RGBControlClass.Init_MB_Adv_v2`, `RGBControlClass.MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, and `Class_Fun_MB.Init_MB`.
-- Decompile `MSI_LED.MSI_7B10Led.CheckSupportMethod`, `IsSupportJARGB_V2`, `Set_AllBoard`, `Get_AllBoard`, `JARGB_V2_Detect`, `ParserJargbV2InfoToLed_Settings`, and `JARGB_Apply`.
-- Cross-reference the `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID ` log templates back to IL call sites and data sources.
-- Decompile `Class_ParseCfg.ParseCfgFile` and online-data selection logic around `Mystic Light Online Data.dat`.
-- Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and determine whether it contains `MS-7E75_1`.
-- Reverse or identify the `Mystic Light\Profile\*.tmp` and `loader.tmp` profile blob format.
-- Continue static work on `MBAPI_x86.dll` around the confirmed `7E75` board-ID list and map its table consumer.
-- Inspect `MLModule.dll`, `MysticLight_AllDevice.dll`, and `SyncData.dll` statically for `MS-7E75_1`, JARGB V2 support records, and LEDKeeper call targets.
+- Use the recovered `Class_ParseCfg` decode path to statically decode both installed `Mystic Light Online Data.dat` files and search decrypted `[SyncData]` / `[Motherboard]` records for MS-7E75.
+- Decompile `CLEDParser` support parsing, especially `CheckSupportDevice`, `VerifySupportDevice`, `List_PartItem` construction, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
+- Decompile `C_Encrypt.DecryptBase64` to document the exact `!!MSI!!` data transform.
+- Continue static MBAPI work around the confirmed `7E75` board-ID list and `CheckMBVersion` / `SupportLED` consumers.
+- Inspect `MLModule.dll`, `MysticLight_AllDevice.dll`, and `SyncData.dll` statically for MS-7E75 records and `CLEDParser` data types.
+- Inspect registry/profile schema references for `MB_JARGB_V2_Support*`, `MB_JARGB_V2_Info*`, and generated zone show names without reading live hardware.
 
 ## Explicit Hardware-Access Note
 

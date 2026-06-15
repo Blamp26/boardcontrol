@@ -50,6 +50,8 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 - `LEDKeeper2.exe` is a managed x86 .NET Framework 4.8 Mystic Light orchestration executable whose managed `MSI_LED.MB` class P/Invokes `Lib\MBAPI_x86.dll` for motherboard LED/support calls, Renesas helpers, EC/SIO helpers, and `SMBus_Initial`.
 - `LEDKeeper2.exe` contains log templates matching existing runtime logs, including `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID `, plus generic `JRGB1`, `JRGB2`, `JRAINBOW1`, `JRAINBOW2`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` strings.
 - `LEDKeeper2.exe` contains board support enums and candidate dispatch classes such as `RGBControlClass`, `Class_Fun_MB`, and `MSI_7B10Led`, but no cleartext `7E75`, `MS-7E75`, `MS-7E75_1`, or `B850` was found in that executable.
+- `LEDKeeper2.exe` decompilation shows `MS-7E75_1` can be generated indirectly from runtime board identity as `MB_Info.Product + "_" + MB_Info.Version.Substring(0, 1)`, while `App.mbID` can be generated from the four hex digits after `MS-`.
+- `LEDKeeper2.exe` decompilation shows `Class_ParseCfg.ParseCfgFile` selects and decodes `Mystic Light Online Data.dat`, extracts `[SyncData]`, and `Class_Fun_MB.Compare_Support_MB` checks `[SyncData]` against board product/version or market strings.
 - Installed runtime log artifacts show `MS-7E75_1`, `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` for this host, but the static source that creates those profile/zone names is still unknown.
 - The actual `Driver_Engine.dll` imports and uses `CreateFileW`, `DeviceIoControl`, and Service Control Manager APIs.
 - The actual `Driver_Engine.dll` embeds `NTIOLib.sys` and `NTIOLib_X64.sys`, constructs `\\.\<caller-provided-name>` device paths, and delegates privileged operations to a kernel driver through visible `0xc350....` IOCTL constants.
@@ -127,7 +129,8 @@ Therefore MS-7E75 remains research-only, and hardware access remains blocked.
 
 ## Next Static-Only Targets
 
-- Decompile `LEDKeeper2.exe` IL around `RGBControlClass.updateSupportedDevice`, `RGBControlClass.MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, `MSI_7B10Led.CheckSupportMethod`, `IsSupportJARGB_V2`, `JARGB_V2_Detect`, and the embedded `Support list`, `ResetItem`, and `[RGBControlClass] mbID` log templates.
+- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` decode path to decode `Mystic Light Online Data.dat` statically and search `[SyncData]` / `[Motherboard]` records for MS-7E75.
+- Decompile `CLEDParser` around support parsing and `List_PartItem` zone construction.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
 - Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.

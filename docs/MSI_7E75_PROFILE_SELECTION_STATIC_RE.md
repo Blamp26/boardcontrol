@@ -154,6 +154,8 @@ Confirmed:
 - Static MBAPI evidence includes the `7E75` board ID.
 - Static MBAPI evidence includes generic route families: SMBus/Renesas, EC, ISA/SIO, Driver Engine, SMBus Engine, and NTIOLib.
 - Static LEDKeeper2 evidence includes the MBAPI P/Invoke boundary, generic profile/online-data filenames, generic JARGB V2 zone strings, and log templates matching `Support list`, `ResetItem`, and `[RGBControlClass] mbID`.
+- Decompiled LEDKeeper2 evidence shows `MS-7E75_1` can be constructed generically from `MB_Info.Product` and the first board-version character, rather than appearing as a cleartext literal.
+- Decompiled LEDKeeper2 evidence shows `Class_ParseCfg.ParseCfgFile` decodes `Mystic Light Online Data.dat` and fills `[SyncData]`, which `Class_Fun_MB.Compare_Support_MB` uses for board support gating.
 - Installed runtime logs show MSI software previously recognized this machine as `B850 GAMING PLUS WIFI PZ (MS-7E75)`.
 - Installed Mystic Light logs show a board/profile-like token `MS-7E75_1`.
 - Installed Mystic Light logs show LED zone labels `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3`.
@@ -171,7 +173,8 @@ Unknown:
 
 ## Next Static-Only Targets
 
-- Statically decompile `LEDKeeper2.exe` around support detection and board/profile construction, especially `RGBControlClass.updateSupportedDevice`, `RGBControlClass.MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, `MSI_7B10Led.CheckSupportMethod`, `MSI_7B10Led.IsSupportJARGB_V2`, `MSI_7B10Led.JARGB_V2_Detect`, `Class_MB_800.UpdateJARGB_V2_Basic`, and log-string call sites for `Support list`, `ResetItem`, and `[RGBControlClass] mbID`.
+- Use the recovered `LEDKeeper2.exe` `Class_ParseCfg` path to decode `Mystic Light Online Data.dat` statically and search for MS-7E75 `[SyncData]` / `[Motherboard]` records.
+- Statically decompile `CLEDParser` around support detection, `List_PartItem` construction, `ShowName`, `MainDevice`, `DeviceName`, and `Chipest` assignment.
 - Statically decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table shape, consumers, and dispatch effects.
 - Reverse the `!!MSI!!` plus base64 plus binary format used by `Mystic Light Online Data.dat`.
 - Reverse or identify the binary format used by `Mystic Light\Profile\*.tmp`.
