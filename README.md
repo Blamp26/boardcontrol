@@ -24,6 +24,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Static Reverse Engineering Notes](docs/MSI_7E75_STATIC_RE.md) - static MSI Center / Mystic Light control-path evidence.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - static Driver_Engine.dll transport-boundary evidence and open questions.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
+- [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.
 
 ## Project Map
 
