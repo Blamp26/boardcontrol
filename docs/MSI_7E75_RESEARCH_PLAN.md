@@ -40,8 +40,17 @@ Phase 1 - Static information only:
 - Record SMBus Engine transaction/controller-selection evidence in [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md).
 - Record RTK Bridge Realtek bridge/device-handle evidence in [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md).
 - Record CPU Engine CPU telemetry/tuning evidence in [MSI_7E75_CPU_ENGINE_STATIC_RE.md](MSI_7E75_CPU_ENGINE_STATIC_RE.md).
+- Consolidate static reverse-engineering findings and module relevance in [MSI_7E75_STATIC_RE.md](MSI_7E75_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
+
+Next static-only targets:
+
+- Search MSI Center profile/config/database files for `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, board IDs, and route selectors.
+- Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
+- Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify Renesas/Mystic Light call families.
+- Build static vtable maps for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.
+- Statically inspect `NTIOLib.sys` / `NTIOLib_X64.sys`, if available, for IOCTL dispatch and device names.
 
 Phase 2 - OS-visible inventory only:
 

@@ -1,186 +1,132 @@
-# MSI MS-7E75 Static Reverse Engineering Notes
+# MSI MS-7E75 Static Reverse Engineering Overview
 
-Status: static analysis only, hardware access disabled.
+Status: consolidated static analysis only, hardware access disabled.
 
 ## Scope
 
-This document records static reverse engineering notes from an active Ghidra MCP session while investigating possible MSI Center / Mystic Light / hardware-monitor control paths relevant to MSI MS-7E75 / B850 GAMING PLUS WIFI PZ.
+This document is the top-level static reverse-engineering overview for MSI MS-7E75 / B850 GAMING PLUS WIFI PZ research. It consolidates findings from the MBAPI boundary pass and direct static Ghidra/headless passes on:
 
-The analysis is limited to strings, imports, function names, and selected decompiler output from the program currently exposed by Ghidra MCP. The MCP toolset did not expose a project/program browser, so the only loaded binary visible from this session is the active PE image. Based on strings, class names, and exported-style function names, the active image appears to be `MBAPI_x86.dll`.
+- `MBAPI_x86.dll` boundary evidence
+- `Driver_Engine.dll`
+- `SMBus_Engine.dll`
+- `rtk_bridge.dll`
+- `CPU_Engine.dll`
 
-No board support code was added.
+The goal is to summarize what is confirmed, which modules look relevant, which modules look low-relevance for motherboard Mystic Light, what remains unknown, and why the current evidence still does not establish an MS-7E75 LED register map.
 
 ## Safety Constraints
 
+- Documentation only.
 - Static analysis only.
 - MSI Center was not run.
 - Mystic Light was not run.
-- No hardware access commands were run.
-- No writes to hardware were enabled or run.
-- `/dev/port` was not used.
-- `detect-chip` and `read-reg` were not used.
+- `cargo run -- doctor` was not run.
+- `detect-chip`, `read-reg`, `write`, and `apply` were not run.
+- `/dev/port` was not touched.
+- No raw SMBus access was performed.
+- No raw Super I/O access was performed.
+- MS-7E75 hardware access was not enabled.
 - No MS-7E75 register map was inferred from 7A45.
-- Findings below are candidates only until corroborated by additional static artifacts and safe public/OS-visible evidence.
+- The 7A45 NCT register map was not reused for MS-7E75.
+- No analyzed path is claimed as the MS-7E75 path unless board-specific evidence exists.
 
-## Analyzed Binaries
+## Related Detailed Notes
 
-| Binary / project | Source | Notes |
-| --- | --- | --- |
-| Active Ghidra program, inferred `MBAPI_x86.dll` | Ghidra MCP active program | PE image with `.text`, `.rdata`, `.data`, `.rsrc`, and `.reloc` segments. Contains `MBAPI_x86.dll`, `CMBAPIApp`, MSI Center Mystic Light registry/log paths, LED control functions, SMBus helper strings, driver-engine helper strings, and NCT6779D references. |
+| Note | Purpose |
+| --- | --- |
+| [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) | Direct `Driver_Engine.dll` transport, service, device, and IOCTL evidence. |
+| [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) | Direct `SMBus_Engine.dll` SMBus transaction, controller-selection, and Renesas-adjacent evidence. |
+| [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md) | Direct `rtk_bridge.dll` Realtek bridge/device-handle evidence and relevance assessment. |
+| [MSI_7E75_CPU_ENGINE_STATIC_RE.md](MSI_7E75_CPU_ENGINE_STATIC_RE.md) | Direct `CPU_Engine.dll` CPU telemetry/tuning evidence and relevance assessment. |
 
-Likely companion modules referenced by the active program but not loaded/inspected in this MCP session:
+## Confirmed Static Evidence
 
-- `\SMBus_Engine.dll`
-- `\Driver_Engine.dll`
-- `\CPU_Engine.dll`
-- `\rtk_bridge.dll`
+- The MBAPI-like layer contains Mystic Light and LED entry points such as `LEDMysticControl`, `LEDMysticControlV2`, `LEDControl`, `SupportLED`, `SetMysticLEDColor*`, `SetMysticRainbowMode*`, `ResetLED`, and `ControlFANLED`.
+- The MBAPI-like layer dynamically references companion modules including `\SMBus_Engine.dll`, `\Driver_Engine.dll`, `\CPU_Engine.dll`, and `\rtk_bridge.dll`.
+- The MBAPI-like layer contains `NTIOLib_MysticLight` and resolves `Driver_Engine.dll` exports for port I/O, CMOS, MSR, physical memory, and PCI config access.
+- The actual `Driver_Engine.dll` imports and uses `CreateFileW`, `DeviceIoControl`, and Service Control Manager APIs.
+- The actual `Driver_Engine.dll` embeds `NTIOLib.sys` and `NTIOLib_X64.sys`, constructs `\\.\<caller-provided-name>` device paths, and delegates privileged operations to a kernel driver through visible `0xc350....` IOCTL constants.
+- The actual `SMBus_Engine.dll` exports SMBus byte/block/check/SPD wrappers and initializes from a Driver Engine-like object supplied by its caller.
+- `SMBus_Engine.dll` uses Driver Engine PCI config function-table offsets to select an `IntelSMBus` or `ATISMBus` backend and discover SMBus controller/base information.
+- `SMBus_Engine.dll` contains Renesas-labeled synchronization/log strings, but no hard-coded MS-7E75, JRGB, JRAINBOW, or Renesas LED address proof was found in that DLL.
+- `rtk_bridge.dll` is a Realtek bridge helper with storage-device scan paths, `DeviceIoControl` bridge commands, and bridge-attached LED helper exports.
+- `CPU_Engine.dll` is a CPU telemetry/tuning helper with AMD SMU, Intel mailbox, temperature, ratio, power, and current-limit exports.
+- None of the analyzed modules contains specific `MS-7E75`, `7E75`, `B850`, `JRGB`, or `JRAINBOW` proof tying MS-7E75 motherboard headers to a concrete transport or register map.
 
-## Candidate Control Paths
+## Summary Table
 
-### Mystic Light / LED
+| Module | Confirmed role | Relevance to MS-7E75 Mystic Light | Board-specific proof found? | Current assessment |
+| --- | --- | --- | --- | --- |
+| MBAPI-like boundary | Mystic Light API layer; loads companion engines; contains LED, SMBus, Driver Engine, EC/SIO, NCT, and fan LED symbols. | High as the orchestration layer, but still not board-specific for MS-7E75. | No `MS-7E75` / `7E75` / `B850` proof found. | Important starting point; likely chooses feature/backend paths elsewhere through flags or data. |
+| `Driver_Engine.dll` | Generic privileged access bridge through `CreateFileW`, SCM APIs, `DeviceIoControl`, `NTIOLib.sys`, and `NTIOLib_X64.sys`. | High as the low-level transport provider used by MBAPI and SMBus Engine. | No board/header strings found. | Explains generic NTIOLib-backed port/PCI/memory/MSR access, not an LED map. |
+| `SMBus_Engine.dll` | Generic SMBus byte/block/check/SPD transaction engine with Intel/ATI backend selection through Driver Engine PCI config calls. | High as the strongest generic candidate for the MBAPI Mystic Light/Renesas SMBus path. | No MS-7E75/header strings found. | Likely part of the main generic transport path, but not proof MS-7E75 uses it. |
+| `rtk_bridge.dll` | Realtek USB/storage bridge helper with bridge scan/open, IOCTL command wrapper, and bridge LED helpers. | Low for motherboard headers unless a future board/accessory selector points to it. | No MS-7E75/header strings found. | Probably unrelated to MS-7E75 motherboard Mystic Light; likely accessory/bridge-device support. |
+| `CPU_Engine.dll` | CPU telemetry and CPU tuning helper with AMD SMU and Intel OC mailbox evidence. | Low for Mystic Light motherboard RGB. | No MS-7E75/header/Mystic strings found. | Likely unrelated to lighting; keep separate from RGB claims. |
 
-The active program contains direct Mystic Light and LED entry points:
+## Likely Main Generic Transport Path
 
-- `LEDMysticControl`
-- `LEDMysticControlV2`
-- `LEDMysticControlV2_1`
-- `LEDControl`
-- `SupportLED`
-- `SetMysticLEDColor*`
-- `SetMysticRainbowMode*`
-- `SetMysticBreathingMode*`
-- `SetMysticFlashingMode*`
-- `ResetLED`
-- `ControlFANLED`
+The strongest static chain for generic MSI Mystic Light SMBus/Renesas-style traffic is:
 
-`LEDMysticControl` writes through an SMBus function pointer with device address `0x52` and registers/commands `0xe4` or `0xe3`, so Mystic Light support for at least some MSI boards appears to include an SMBus/Renesas LED path.
+```text
+MBAPI_x86.dll-like layer
+  -> SMBus_Engine.dll
+  -> Driver_Engine.dll function table
+  -> Driver_Engine.dll CreateFileW / DeviceIoControl
+  -> NTIOLib.sys or NTIOLib_X64.sys
+```
 
-`LEDControl` and `Init_NCT_LED_ByBoardFlags` use low-level NCT/SIO-style calls through `g_INTEL100MB`, including logical device and register-looking pairs such as `(0x09, 0xe9)`, `(0x09, 0xee)`, `(0x0b, 0xf7)`, `(0x12, 0xe4)`, and `(0x12, 0xe6)`. These are evidence of a Super I/O path in the binary, but they are not evidence that MS-7E75 uses the same map.
+This chain is likely because:
 
-### SMBus / Renesas LED
+- MBAPI references and initializes both `SMBus_Engine.dll` and `Driver_Engine.dll`.
+- MBAPI contains Mystic Light LED entry points and Renesas-related API names.
+- `SMBus_Engine.dll` exports the byte/block wrappers MBAPI references.
+- `SMBus_Engine.dll` stores a Driver Engine-like initialization argument and uses Driver Engine PCI config offsets.
+- `Driver_Engine.dll` directly supplies the generic privileged bridge to NTIOLib through `DeviceIoControl`.
 
-The active program contains `SMBus_Engine.dll` strings and wrappers:
+This is a generic transport conclusion, not an MS-7E75 board conclusion.
 
-- `_SMBusControl@12`
-- `_SMBusControlWord@12`
-- `_SMBusControlBlock@16`
-- `SMBus_Initial`
-- `GetSMBBASE`
-- `_RenesasLEDControlV3@64`
-- `_RenesasLEDSetBank@4`
-- `KeepRenesasLED`
+## Unrelated Or Low-Relevance Modules
 
-`_SMBusControl@12` calls a function pointer when the SMBus engine is initialized. `LEDMysticControl` calls the same path with address `0x52`, which matches the existing 7A45 research model but must not be treated as proof for MS-7E75.
+`rtk_bridge.dll` looks like a Realtek bridge helper rather than a motherboard header controller. It scans `\\.\PhysicalDrive%i` and `\\.\%c:` handles, probes Realtek bridge targets, and exposes bridge LED helper exports. It has no static MS-7E75, B850, JRGB, or JRAINBOW strings. It should remain low relevance unless static MBAPI dispatch or external inventory ties it to the target board.
 
-### Super I/O / EC / Board GPIO
+`CPU_Engine.dll` looks like CPU telemetry and CPU tuning infrastructure. Its evidence is CPU-family strings, AMD SMU exports, Intel OC mailbox strings, temperature/clock/power/tuning exports, and no Mystic Light/JRGB/JRAINBOW/Driver Engine/NTIOLib string linkage. It should remain separate from MS-7E75 lighting research unless a future Mystic Light-specific call chain is found.
 
-The active program references:
+## Why This Does Not Prove An MS-7E75 LED Register Map
 
-- `NCT6779D`
-- `Nuvoton`
-- `AVNCT6779D`
-- `GetSIO_DefaultWhite`
-- `SetSIOGPIO`
-- `SetECSpace`
-- `GetECSpace`
-- `SetECRAM_Mode`
-- `SetECRAM_Color`
+The current evidence identifies generic MSI software layers and transports, but a board LED register map requires board-specific proof that is not present yet.
 
-`SetECSpace` and `GetECSpace` are thin wrappers around helper functions that write/read an indexed space. Names suggest an EC path, but the underlying transport is not resolved from the currently inspected functions.
+Missing proof includes:
 
-### Driver / Low-Level Access
+- No analyzed module contains `MS-7E75`, `7E75`, or meaningful `B850` board dispatch evidence.
+- No analyzed module maps MS-7E75 to SMBus address `0x52`, Renesas LED commands, EC space, Super I/O GPIO, RTK bridge, or another concrete backend.
+- No analyzed module identifies MS-7E75 JRGB/JRAINBOW header registers, command bytes, payload layout, zones, or controller identity.
+- NCT/Super I/O evidence in MBAPI includes known older-board behavior such as 7A45-related flags, but that must not be reused for MS-7E75.
+- Driver Engine and SMBus Engine explain how privileged and SMBus operations can be performed, not which operations are correct for this board.
 
-The active program references `\Driver_Engine.dll` and dynamic helper names:
+Therefore MS-7E75 remains research-only, and hardware access remains blocked.
 
-- `DriverInitialization`
-- `DriverRelease`
-- `ReadIoPortByte`
-- `WriteIoPortByte`
-- `ReadIoPortWord`
-- `WriteIoPortWord`
-- `ReadPhysicalMemory`
-- `ReadPhysicalMemory_Byte`
-- `WritePhysicalMemory_Byte`
-- `ReadPhysicalMemory_DWORD`
-- `WritePhysicalMemory_DWORD`
-- `PCIConfigRead`
-- `PCIConfigWrite`
-- `NTIOLib_MysticLight`
+## What Remains Unknown
 
-The static evidence strongly suggests that MSI's API layer delegates privileged I/O, physical memory, and PCI config access to a driver engine and/or NTIOLib-named component. The active program imports `CreateFileA/W`, but no static import named `DeviceIoControl` was present in the inspected import list; driver IOCTL details likely live in `Driver_Engine.dll` or are loaded dynamically.
+- Where MSI Center stores or computes the MS-7E75 board/profile selection.
+- Whether MS-7E75 motherboard lighting uses SMBus/Renesas, EC, Super I/O GPIO, ACPI/WMI, USB/HID, RTK bridge, or another MSI service.
+- Whether the MBAPI `LEDMysticControl` SMBus address/command pattern applies to MS-7E75 or only to other MSI boards/controllers.
+- Whether `NTIOLib_MysticLight` is the installed service name, device name, profile name, or a caller-provided alias.
+- The kernel-side IOCTL implementation in `NTIOLib.sys` / `NTIOLib_X64.sys`.
+- Exact `SMBus_Engine.dll` Intel/ATI backend vtable mappings and register-level transaction sequences.
+- Which MBAPI flags or config records select `SMB_*`, `b_SMB_*`, `n_SMB_*`, EC/SIO, fan LED, RTK bridge, or CPU paths.
+- Whether MSI Center profile/config data outside these DLLs contains board IDs, model IDs, or route selectors.
 
-### Hardware Monitor / Fan
+## Next Static-Only Targets
 
-Hardware-monitor-related entry points include:
-
-- `GetCPUTemp`
-- `GetCPUInfo`
-- `GetDRAMInfo3`
-- `ControlFANLED`
-- `SaveFANLED`
-
-`GetCPUTemp` calls into CPU/helper objects and applies CPU-family-specific offsets for strings like `Summit` and `Threadripper`. `ControlFANLED` writes a sequence of opaque keys like `0xfdae04f8` through a helper object, suggesting a separate firmware/driver-backed LED path for fan LEDs. This is not enough to identify fan-speed control.
-
-### ACPI / WMI / HID / USB
-
-Focused string searches did not find meaningful ACPI/WMI/HID/USB control evidence in the active program. Only unrelated or vendor-table strings appeared, such as a JEDEC vendor string containing `ACPI` and UI framework text containing `Hide`.
-
-## Evidence Table
-
-| Binary / module | Function | Address | String / import / evidence | Why it matters | Confidence | Suggested path |
-| --- | --- | --- | --- | --- | --- | --- |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `1021dfa0`, `1024106e` | `MBAPI_x86.dll` | Identifies the active binary as MSI MBAPI-like layer or a program carrying that module identity. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `1021dfd4`, `1021e100`, `1021e148` | MSI Center Mystic Light log and registry paths | Ties the active binary to MSI Center / Mystic Light LED component configuration. | High | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | `LEDMysticControl` | `10016360` | Calls SMBus function pointer with address `0x52`, command/register `0xe4` or `0xe3` | Direct Mystic Light control path using SMBus-like engine for LED control. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `_SMBusControl@12` | `100153e0` | Function pointer call through SMBus engine object | Generic byte/control wrapper into `SMBus_Engine.dll` object. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `_SMBusControlBlock@16` | `10015440` | Function pointer call through SMBus engine object | Generic block write/control wrapper; relevant for RGB controllers needing multi-byte payloads. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `SMBus_Initial` | `10040140` | Calls SMBus engine initialization function pointer | Confirms the module initializes an SMBus helper before LED/DDR operations. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `GetSMBBASE` | `1003f620` | Calls SMBus engine function pointer at offset `0x2c` | Suggests the module can query SMBus base/addressing data through the helper engine. | Medium | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `_RenesasLEDControlV3@64` | `10015b40` | Calls internal `FUN_10015470` when global init flag is set | Explicit Renesas LED control entry point, likely layered over SMBus. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | `LEDControl` | `10015bd0` | Reads/writes NCT/SIO-style LDN/register pairs via `g_INTEL100MB` helper | Evidence of a Super I/O LED control path in the binary. Not board proof for MS-7E75. | High | Driver IOCTL / unknown SIO transport |
-| Active program, inferred `MBAPI_x86.dll` | `Init_NCT_LED_ByBoardFlags` | `1000a2f0` | Branches on `flag_7A45_NCT_LED`, uses NCT-style register accesses | Shows 7A45-specific NCT LED behavior exists in this binary and must not be reused for 7E75. | High | Driver IOCTL / unknown SIO transport |
-| Active program, inferred `MBAPI_x86.dll` | `SupportLED` | `10015380` | Checks multiple LED capability flags including `flag_7A45_NCT_LED` | Indicates board-feature flags select LED control backends. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `1022184c`, `1024c54c` | `NCT6779D`, `.?AVNCT6779D@@` | Confirms Nuvoton NCT6779D support in this binary. Not evidence for MS-7E75 controller identity. | High | Driver IOCTL / unknown SIO transport |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `1020c208` | `0xAD;Nuvoton;` | Vendor string found in likely JEDEC/manufacturer tables; weak Nuvoton corroboration only. | Low | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | `SetSIOGPIO` | `1003f680` | Calls helper `FUN_10045490` when SIO object is present | Suggests a board GPIO path separate from high-level Mystic Light calls. | Medium | Driver IOCTL / unknown SIO transport |
-| Active program, inferred `MBAPI_x86.dll` | `SetECSpace` | `1003f6c0` | Calls `FUN_10047680(param_1, param_2, param_3)` | Name suggests EC indexed write path, transport unresolved. | Medium | Unknown / EC |
-| Active program, inferred `MBAPI_x86.dll` | `GetECSpace` | `1003f700` | Calls `FUN_100478a0(param_1, param_2)` and returns byte | Name suggests EC indexed read path, transport unresolved. | Medium | Unknown / EC |
-| Active program, inferred `MBAPI_x86.dll` | `_IT8295QFN_OP@20` | `1003e9e0` | Uses SMBus-style function pointers and ITE DDR strings nearby | Evidence for ITE LED/DDR device handling in the module. | Medium | SMBus / unknown |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `10221164` through `1022124c` | `\SMBus_Engine.dll`, `SMBusInitialization`, `SMBusGetAddress`, `SMBusReload`, `SMBusRelease` | Companion SMBus module is dynamically referenced. | High | SMBus |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `10221318` through `10221454` | `\Driver_Engine.dll`, `DriverInitialization`, `ReadIoPort*`, `WriteIoPort*`, `Read/WritePhysicalMemory*`, `PCIConfigRead/Write` | Strong evidence that privileged hardware I/O is delegated to a low-level driver module. | High | Driver IOCTL |
-| Active program, inferred `MBAPI_x86.dll` | N/A | `1021e1a8` | `NTIOLib_MysticLight` | Suggests a named low-level driver/library path associated with Mystic Light. | High | Driver IOCTL |
-| Active program, inferred `MBAPI_x86.dll` | Imports | `EXTERNAL:00000003`, `EXTERNAL:00000068` | `CreateFileW`, `CreateFileA` imports | Could open files/devices/modules; not sufficient alone to prove direct device IOCTL in this binary. | Low | Unknown / driver |
-| Active program, inferred `MBAPI_x86.dll` | Imports | N/A | No `DeviceIoControl` import found in paged import list | Suggests IOCTL may be hidden in `Driver_Engine.dll` or dynamically loaded, or not in this module. | Medium | Driver IOCTL |
-| Active program, inferred `MBAPI_x86.dll` | Strings | N/A | No meaningful `MS-7E75`, `7E75`, or `B850` strings found | Active binary does not appear to contain explicit MS-7E75 board matching text. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | Strings | N/A | No meaningful `JRAINBOW` or `JRGB` strings found | Header labels may be represented elsewhere, not in this module, or by numeric board profiles. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | Strings | N/A | No meaningful `ACPI`, `WMI`, `HID`, `USB`, `SetupDi`, or `HidD` control strings found | The active binary does not currently point to these transport paths. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | `GetCPUTemp` | `100151f0` | CPU helper calls and CPU-family strings `Summit`, `Threadripper` | Hardware-monitor-like sensor path exists, but not enough to map motherboard sensors or fans. | Medium | Unknown |
-| Active program, inferred `MBAPI_x86.dll` | `ControlFANLED` | `1001c1c0` | Writes opaque keys including `0xfdae04f8` through helper object | Candidate fan LED path, not fan-speed control proof. | Medium | Unknown / driver |
-| Active program, inferred `MBAPI_x86.dll` | `SaveFANLED` | Function name present | `C:\MSI\GamingAPP\FANLED.cfg` | Fan LED state persistence path; older GamingAPP path may still be reused. | Medium | Unknown |
-
-## Open Questions
-
-- Which exact MSI Center package and version supplied the active binary?
-- Can Ghidra expose or load the companion `SMBus_Engine.dll`, `Driver_Engine.dll`, `CPU_Engine.dll`, and `rtk_bridge.dll` for static inspection?
-- Does MS-7E75 select an SMBus/Renesas path, an EC/SIO path, a USB/HID path, or an MSI firmware service path?
-- Where are board IDs such as MS-7E75 represented if not as plain strings in the active binary?
-- What does `Driver_Engine.dll` use internally: device object names, `DeviceIoControl`, service control manager APIs, or another IPC layer?
-- What do the `SetECSpace` / `GetECSpace` helper functions actually access?
-- Are JRGB/JRAINBOW headers controlled by a board LED controller, EC, Super I/O GPIO, SMBus LED controller, or a combination?
-- Are hardware monitor fan/sensor controls separate from Mystic Light LED controls?
-
-## Next Static-Analysis Tasks
-
-- Load and inventory `SMBus_Engine.dll`, `Driver_Engine.dll`, `CPU_Engine.dll`, and `rtk_bridge.dll` in Ghidra.
-- In `Driver_Engine.dll`, search for device names, service names, `CreateFile`, `DeviceIoControl`, IOCTL constants, and `NTIOLib_MysticLight`.
-- In `SMBus_Engine.dll`, identify address, command, word, byte, and block transaction wrappers and any bus-locking or chipset-specific logic.
-- Cross-reference the `MSI Center\Component\Mystic Light` registry paths and capability flags to find board-profile selection.
-- Cross-reference `flag_7A45_NCT_LED` and neighboring flags to identify how board IDs map to LED backends.
-- Search for MS-7E75 / 7E75 / B850 in additional MSI Center modules and data files, not only the active `MBAPI_x86.dll`-like program.
-- Decompile `FUN_10047680` and `FUN_100478a0` to resolve the `SetECSpace` / `GetECSpace` transport.
-- Decompile `FUN_10045490` to resolve the `SetSIOGPIO` transport.
-- Inspect export tables and callers for public API surface, but keep all work static.
+- Search MSI Center Mystic Light profile/config/database files for `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, board IDs, and route selectors.
+- Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
+- Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify the Renesas/Mystic Light call families.
+- Build a static vtable map for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.
+- Decompile the SMBus backend byte/block read/write methods to document transaction sequencing without running them.
+- Statically inspect installed `NTIOLib.sys` / `NTIOLib_X64.sys`, if available, to map IOCTL dispatch and device names.
+- Decompile MBAPI profile/feature-flag logic around `SupportLED`, `LEDMysticControl`, `LEDControl`, EC/SIO helpers, and fan LED helpers.
+- Search additional MSI Center modules for ACPI/WMI/HID/USB paths and MS-7E75 board selectors.
 
 ## Explicit Hardware-Access Note
 
-No hardware access was enabled or run during this investigation. MSI Center was not launched. No hardware monitor command, `/dev/port` command, Super I/O detection command, register-read command, write command, or board-control support code was run or added.
+No hardware access was enabled or run during this consolidation. MSI Center and Mystic Light were not launched. No hardware monitor command, `/dev/port` command, raw SMBus access, raw Super I/O access, chip-detection command, register-read command, write command, apply command, or board-control hardware support code was run or added.
