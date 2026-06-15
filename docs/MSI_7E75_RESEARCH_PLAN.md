@@ -42,12 +42,13 @@ Phase 1 - Static information only:
 - Record CPU Engine CPU telemetry/tuning evidence in [MSI_7E75_CPU_ENGINE_STATIC_RE.md](MSI_7E75_CPU_ENGINE_STATIC_RE.md).
 - Consolidate static reverse-engineering findings and module relevance in [MSI_7E75_STATIC_RE.md](MSI_7E75_STATIC_RE.md).
 - Record MSI Center / Mystic Light profile-selection search evidence in [MSI_7E75_PROFILE_SELECTION_STATIC_RE.md](MSI_7E75_PROFILE_SELECTION_STATIC_RE.md).
+- Record direct `LEDKeeper2.exe` metadata, profile/zone strings, MBAPI P/Invoke boundary, and dispatch-candidate evidence in [MSI_7E75_LEDKEEPER_STATIC_RE.md](MSI_7E75_LEDKEEPER_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
 Next static-only targets:
 
-- Decompile `LEDKeeper2.exe` support/profile logic around `Support list`, `ResetItem`, `RGBControlClass`, `JARGB_V2`, and board/profile construction.
+- Decompile `LEDKeeper2.exe` IL around `RGBControlClass.updateSupportedDevice`, `Init_MB_Adv_v1/v2`, `MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, `MSI_7B10Led.CheckSupportMethod`, `IsSupportJARGB_V2`, `JARGB_V2_Detect`, and the `Support list`, `ResetItem`, and `[RGBControlClass] mbID` log-string call sites.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
 - Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.

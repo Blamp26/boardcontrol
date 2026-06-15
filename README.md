@@ -23,6 +23,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Research Plan](docs/MSI_7E75_RESEARCH_PLAN.md) - staged safety plan before any hardware probing.
 - [MSI MS-7E75 Static Reverse Engineering Notes](docs/MSI_7E75_STATIC_RE.md) - consolidated static MSI Center / Mystic Light module findings and relevance map.
 - [MSI MS-7E75 Profile Selection Static Notes](docs/MSI_7E75_PROFILE_SELECTION_STATIC_RE.md) - static search for MSI Center / Mystic Light board-profile, zone, and route-selection evidence.
+- [MSI MS-7E75 LEDKeeper2 Static Notes](docs/MSI_7E75_LEDKEEPER_STATIC_RE.md) - static LEDKeeper2.exe metadata, string, resource, profile/zone, and dispatch-candidate evidence.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - direct static Driver_Engine.dll transport, service, device, and IOCTL evidence.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
 - [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.

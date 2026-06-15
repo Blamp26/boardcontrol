@@ -35,6 +35,7 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 | Note | Purpose |
 | --- | --- |
 | [MSI_7E75_PROFILE_SELECTION_STATIC_RE.md](MSI_7E75_PROFILE_SELECTION_STATIC_RE.md) | Static search for MSI Center / Mystic Light board-profile, LED-zone, and route-selection evidence. |
+| [MSI_7E75_LEDKEEPER_STATIC_RE.md](MSI_7E75_LEDKEEPER_STATIC_RE.md) | Direct `LEDKeeper2.exe` static metadata, strings, resources, MBAPI P/Invoke boundary, profile/zone evidence, and dispatch-candidate notes. |
 | [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) | Direct `Driver_Engine.dll` transport, service, device, and IOCTL evidence. |
 | [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) | Direct `SMBus_Engine.dll` SMBus transaction, controller-selection, and Renesas-adjacent evidence. |
 | [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md) | Direct `rtk_bridge.dll` Realtek bridge/device-handle evidence and relevance assessment. |
@@ -46,6 +47,9 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 - The MBAPI-like layer dynamically references companion modules including `\SMBus_Engine.dll`, `\Driver_Engine.dll`, `\CPU_Engine.dll`, and `\rtk_bridge.dll`.
 - The MBAPI-like layer contains `NTIOLib_MysticLight` and resolves `Driver_Engine.dll` exports for port I/O, CMOS, MSR, physical memory, and PCI config access.
 - The MBAPI-like layer contains `7E75` in a broad static board-ID list, but the direct consumer and dispatch effect of that entry are not yet mapped.
+- `LEDKeeper2.exe` is a managed x86 .NET Framework 4.8 Mystic Light orchestration executable whose managed `MSI_LED.MB` class P/Invokes `Lib\MBAPI_x86.dll` for motherboard LED/support calls, Renesas helpers, EC/SIO helpers, and `SMBus_Initial`.
+- `LEDKeeper2.exe` contains log templates matching existing runtime logs, including `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID `, plus generic `JRGB1`, `JRGB2`, `JRAINBOW1`, `JRAINBOW2`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` strings.
+- `LEDKeeper2.exe` contains board support enums and candidate dispatch classes such as `RGBControlClass`, `Class_Fun_MB`, and `MSI_7B10Led`, but no cleartext `7E75`, `MS-7E75`, `MS-7E75_1`, or `B850` was found in that executable.
 - Installed runtime log artifacts show `MS-7E75_1`, `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, and `JARGB_V2_3` for this host, but the static source that creates those profile/zone names is still unknown.
 - The actual `Driver_Engine.dll` imports and uses `CreateFileW`, `DeviceIoControl`, and Service Control Manager APIs.
 - The actual `Driver_Engine.dll` embeds `NTIOLib.sys` and `NTIOLib_X64.sys`, constructs `\\.\<caller-provided-name>` device paths, and delegates privileged operations to a kernel driver through visible `0xc350....` IOCTL constants.
@@ -61,6 +65,7 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 | Module | Confirmed role | Relevance to MS-7E75 Mystic Light | Board-specific proof found? | Current assessment |
 | --- | --- | --- | --- | --- |
 | MBAPI-like boundary | Mystic Light API layer; loads companion engines; contains LED, SMBus, Driver Engine, EC/SIO, NCT, fan LED symbols, and a broad static board-ID list that includes `7E75`. | High as the orchestration layer, but the `7E75` entry is not yet tied to a concrete backend. | `7E75` board-list entry found; no decoded zone/transport/register mapping found. | Important starting point; likely chooses feature/backend paths through flags, code, or data still to be mapped. |
+| `LEDKeeper2.exe` | Managed Mystic Light orchestration executable; wraps `Lib\MBAPI_x86.dll`, owns `RGBControlClass` log templates, generic board support enums, profile/online-data filenames, and JARGB V2 strings. | High for support/profile/zone dispatch research. | Generic `JARGB_V2_1/2/3`, `JRGB1`, `Support list : `, `ResetItem : `, and `[RGBControlClass] mbID ` strings found; no cleartext `7E75` or `MS-7E75_1` found. | Strong dispatch candidate, but current evidence suggests MS-7E75-specific data is elsewhere or computed/loaded at runtime. |
 | `Driver_Engine.dll` | Generic privileged access bridge through `CreateFileW`, SCM APIs, `DeviceIoControl`, `NTIOLib.sys`, and `NTIOLib_X64.sys`. | High as the low-level transport provider used by MBAPI and SMBus Engine. | No board/header strings found. | Explains generic NTIOLib-backed port/PCI/memory/MSR access, not an LED map. |
 | `SMBus_Engine.dll` | Generic SMBus byte/block/check/SPD transaction engine with Intel/ATI backend selection through Driver Engine PCI config calls. | High as the strongest generic candidate for the MBAPI Mystic Light/Renesas SMBus path. | No MS-7E75/header strings found. | Likely part of the main generic transport path, but not proof MS-7E75 uses it. |
 | `rtk_bridge.dll` | Realtek USB/storage bridge helper with bridge scan/open, IOCTL command wrapper, and bridge LED helpers. | Low for motherboard headers unless a future board/accessory selector points to it. | No MS-7E75/header strings found. | Probably unrelated to MS-7E75 motherboard Mystic Light; likely accessory/bridge-device support. |
@@ -122,7 +127,7 @@ Therefore MS-7E75 remains research-only, and hardware access remains blocked.
 
 ## Next Static-Only Targets
 
-- Decompile `LEDKeeper2.exe` support/profile logic around `Support list`, `ResetItem`, `RGBControlClass`, `JARGB_V2`, and board/profile construction.
+- Decompile `LEDKeeper2.exe` IL around `RGBControlClass.updateSupportedDevice`, `RGBControlClass.MB_SetRGB`, `Class_Fun_MB.Compare_Support_MB`, `MSI_7B10Led.CheckSupportMethod`, `IsSupportJARGB_V2`, `JARGB_V2_Detect`, and the embedded `Support list`, `ResetItem`, and `[RGBControlClass] mbID` log templates.
 - Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
 - Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
