@@ -41,12 +41,15 @@ Phase 1 - Static information only:
 - Record RTK Bridge Realtek bridge/device-handle evidence in [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md).
 - Record CPU Engine CPU telemetry/tuning evidence in [MSI_7E75_CPU_ENGINE_STATIC_RE.md](MSI_7E75_CPU_ENGINE_STATIC_RE.md).
 - Consolidate static reverse-engineering findings and module relevance in [MSI_7E75_STATIC_RE.md](MSI_7E75_STATIC_RE.md).
+- Record MSI Center / Mystic Light profile-selection search evidence in [MSI_7E75_PROFILE_SELECTION_STATIC_RE.md](MSI_7E75_PROFILE_SELECTION_STATIC_RE.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
 Next static-only targets:
 
-- Search MSI Center profile/config/database files for `MS-7E75`, `7E75`, `B850`, `JRGB`, `JRAINBOW`, board IDs, and route selectors.
+- Decompile `LEDKeeper2.exe` support/profile logic around `Support list`, `ResetItem`, `RGBControlClass`, `JARGB_V2`, and board/profile construction.
+- Decompile `MBAPI_x86.dll` around the `7E75` board-ID list to identify table consumers and dispatch effects.
+- Reverse the `!!MSI!!` encoded `Mystic Light Online Data.dat` format and the `Mystic Light\Profile\*.tmp` binary profile blobs.
 - Cross-reference MBAPI call sites that pass arguments into `DriverInitialization` and `SMBusInitialization`.
 - Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify Renesas/Mystic Light call families.
 - Build static vtable maps for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.
