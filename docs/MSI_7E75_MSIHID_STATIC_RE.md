@@ -148,6 +148,7 @@ Static implications:
 - Linux `hidraw` is a plausible transport candidate only because the Windows path terminates in `HidD_SetFeature`; it is not yet a supported backend.
 - Any future `hidraw` prototype would need to include the report ID byte in byte 0 and pass full feature-report lengths of `290` or `302` bytes for the documented zone reports, subject to independent safe validation.
 - The visible native wrapper does not show extra checksums, encryption, or buffer transformations around `HidD_SetFeature`; the managed `MSI_800sLed` buffer layout appears to be the transport payload.
+- A separate Linux HID implementation plan is documented in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md); it is documentation-only and does not enable hardware access.
 
 Blocked / unknown:
 

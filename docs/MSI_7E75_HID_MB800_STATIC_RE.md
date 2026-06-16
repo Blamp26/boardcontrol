@@ -172,6 +172,7 @@ Static implications:
 - `hidraw` could be a candidate interface only if a later safe inventory pass confirms the matching USB HID node and report sizes. That inventory has not been performed here.
 - The 290-byte and 302-byte `SetFeature` payloads are larger than the common 64-byte output reports; byte `0` is statically confirmed as the feature report ID at the Windows HID API boundary, but Linux report-size behavior must still be verified safely.
 - No Linux write/apply implementation should be added until native device matching, descriptor/report-size behavior, and failure modes are documented and reviewed.
+- A separate Linux HID implementation plan is documented in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md); it is documentation-only and does not permit device access.
 
 ## Next Static-Only Targets
 

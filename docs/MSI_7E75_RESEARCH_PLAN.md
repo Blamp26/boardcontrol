@@ -47,6 +47,7 @@ Phase 1 - Static information only:
 - Record the static zone-to-helper call path from decoded MS-7E75 zones through `CLEDParser`, `Class_MB_800`, and `MSI_800sLed` in [MSI_7E75_ZONE_CALLPATH_STATIC_RE.md](MSI_7E75_ZONE_CALLPATH_STATIC_RE.md).
 - Record the static MB800 HID wrapper and feature-report layout evidence in [MSI_7E75_HID_MB800_STATIC_RE.md](MSI_7E75_HID_MB800_STATIC_RE.md).
 - Record the native `Lib\MsiHid.dll` device-filtering and direct `HidD_SetFeature` wrapper evidence in [MSI_7E75_MSIHID_STATIC_RE.md](MSI_7E75_MSIHID_STATIC_RE.md).
+- Record the staged Linux HID implementation plan in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
@@ -61,6 +62,7 @@ Next static-only targets:
 - Cross-reference MBAPI callers of `SMB_*`, `b_SMB_*`, and `n_SMB_*` to identify Renesas/Mystic Light call families.
 - Build static vtable maps for `SMBus_Engine.dll` `IntelSMBus` and `ATISMBus` backends.
 - Statically inspect `NTIOLib.sys` / `NTIOLib_X64.sys`, if available, for IOCTL dispatch and device names.
+- Keep the Linux HID implementation plan documentation-only until the static evidence and review gates are complete.
 
 Phase 2 - OS-visible inventory only:
 

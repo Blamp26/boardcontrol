@@ -28,6 +28,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Zone Call-Path Static Notes](docs/MSI_7E75_ZONE_CALLPATH_STATIC_RE.md) - static MS-7E75 zone-to-`Class_MB_800` / `MSI_800sLed` helper call-path evidence.
 - [MSI MS-7E75 MB800 HID Static Notes](docs/MSI_7E75_HID_MB800_STATIC_RE.md) - static HID wrapper, device-open, and Gen1/Gen2 feature-report layout evidence for the MB800 path.
 - [MSI MS-7E75 MsiHid Native Static Notes](docs/MSI_7E75_MSIHID_STATIC_RE.md) - static native `MsiHid.dll` device-filtering, open, and `HidD_SetFeature` wrapper evidence for the MB800 path.
+- [MSI MS-7E75 Linux HID Implementation Plan](docs/MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md) - documentation-only staged plan for future Linux HID inventory, gating, dry-run report building, and a separate reviewed write path.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - direct static Driver_Engine.dll transport, service, device, and IOCTL evidence.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
 - [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.
