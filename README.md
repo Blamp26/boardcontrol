@@ -68,6 +68,7 @@ Current MVP status:
 - supports only MSI board profile `7A45`
 - models the Nuvoton NCT6779D LED init/reset sequence
 - includes safe RMW allowlist logic
+- includes a pure in-memory MS-7E75 MB800 HID Phase 0 report builder
 - passes `cargo check`, `cargo test`, and `cargo clippy -- -D warnings`
 
 ## Supported Hardware Status
@@ -142,6 +143,7 @@ cargo clippy -- -D warnings
 - [x] Safe doctor/preflight diagnostics
 - [x] RMW planning/report layer
 - [x] MS-7E75 research-only DMI detection
+- [x] MS-7E75 HID Phase 0 in-memory report builder
 - [ ] Linux `/dev/port` backend for controlled NCT RMW writes
 - [x] `/proc/ioports` conflict checks
 - [ ] Renesas SMBus raw write backend

@@ -1,6 +1,6 @@
 # MSI MS-7E75 Linux HID Implementation Plan
 
-Status: documentation only. No hardware access is enabled or implied by this plan.
+Status: Phase 0 report builder implemented in `src/linux/hid/report.rs`. No hardware access is enabled or implied by this plan.
 
 ## Purpose
 
@@ -59,14 +59,16 @@ Known reports from static reverse engineering:
 
 Goal: build HID feature buffers in memory only.
 
+Status: implemented.
+
 Planned work:
 
-- add pure Rust structs and helpers that assemble Gen1 and Gen2 feature buffers in memory
-- keep report ID in byte `0`
-- keep lengths stable at `290` and `302`
-- preserve the area/port mapping from the static reverse-engineering docs
-- add unit tests for report length, report ID, area mapping, and port mapping
-- add golden tests that compare generated buffers against documented layouts
+- [x] add pure Rust structs and helpers that assemble Gen1 and Gen2 feature buffers in memory
+- [x] keep report ID in byte `0`
+- [x] keep lengths stable at `290` and `302`
+- [x] preserve the area/port mapping from the static reverse-engineering docs
+- [x] add unit tests for report length, report ID, area mapping, and port mapping
+- [x] add static-layout buffer tests for simple RGB report generation
 
 Safety gates:
 
@@ -78,8 +80,8 @@ Safety gates:
 
 Success criteria:
 
-- a buffer can be generated for each documented MS-7E75 zone entirely in memory
-- tests prove the byte layout matches the static documentation
+- [x] a buffer can be generated for each documented MS-7E75 zone entirely in memory
+- [x] tests prove the byte layout matches the static documentation
 
 ## Phase 1: Detect-Only HID Inventory
 

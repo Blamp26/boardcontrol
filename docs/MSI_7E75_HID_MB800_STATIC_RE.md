@@ -15,6 +15,8 @@ MS-7E75 profile data
 
 The focus is HID discovery/open evidence, `SetFeature` evidence, Gen1/Gen2 report buffer layout, zone-to-report mapping, and Linux implications. This is still static analysis only. It does not enable Linux support and does not prove that writes are safe.
 
+Phase 0 reference implementation: [`src/linux/hid/report.rs`](../src/linux/hid/report.rs)
+
 ## Safety Constraints
 
 - Static analysis and documentation only.
@@ -173,6 +175,7 @@ Static implications:
 - The 290-byte and 302-byte `SetFeature` payloads are larger than the common 64-byte output reports; byte `0` is statically confirmed as the feature report ID at the Windows HID API boundary, but Linux report-size behavior must still be verified safely.
 - No Linux write/apply implementation should be added until native device matching, descriptor/report-size behavior, and failure modes are documented and reviewed.
 - A separate Linux HID implementation plan is documented in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md); it is documentation-only and does not permit device access.
+- A pure in-memory Phase 0 report builder now exists in [`src/linux/hid/report.rs`](../src/linux/hid/report.rs); it assembles documented buffers only and does not enumerate or open HID devices.
 
 ## Next Static-Only Targets
 
