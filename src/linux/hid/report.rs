@@ -300,7 +300,8 @@ fn write_colors(buffer: &mut [u8], start: usize, colors: &[RgbColor; 4]) {
 mod tests {
     use super::{
         GEN1_REPORT_ID, GEN1_REPORT_LENGTH, GEN2_REPORT_LENGTH, JRGB1_AREA_INDEX, LightingMode,
-        Ms7e75Zone, RgbColor, build_gen1_report, build_gen2_report, build_zone_static_rgb_report,
+        Ms7e75Zone, ReportBuildError, RgbColor, build_gen1_report, build_gen2_report,
+        build_zone_static_rgb_report,
     };
 
     #[test]
@@ -404,6 +405,26 @@ mod tests {
     }
 
     #[test]
+    fn gen2_static_red_layout_matches_ledkeeper2_offsets() {
+        assert_gen2_static_rgb_layout(Ms7e75Zone::JargbV2_1, 0x90, RgbColor::new(0xFF, 0x00, 0x00));
+    }
+
+    #[test]
+    fn gen2_static_green_layout_matches_ledkeeper2_offsets() {
+        assert_gen2_static_rgb_layout(Ms7e75Zone::JargbV2_2, 0x91, RgbColor::new(0x00, 0xFF, 0x00));
+    }
+
+    #[test]
+    fn gen2_static_blue_layout_matches_ledkeeper2_offsets() {
+        assert_gen2_static_rgb_layout(Ms7e75Zone::JargbV2_3, 0x92, RgbColor::new(0x00, 0x00, 0xFF));
+    }
+
+    #[test]
+    fn gen2_ez_conn_report_id_and_layout_match_port_3() {
+        assert_gen2_static_rgb_layout(Ms7e75Zone::EzConn, 0x93, RgbColor::new(0x10, 0x20, 0x30));
+    }
+
+    #[test]
     fn invalid_zone_names_are_rejected() {
         assert!(Ms7e75Zone::from_name("SELECT ALL").is_err());
         assert!(Ms7e75Zone::from_name("JARGB_V2_4").is_err());
@@ -417,7 +438,13 @@ mod tests {
             false,
         );
 
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(ReportBuildError::ZoneTypeMismatch {
+                zone: Ms7e75Zone::JargbV2_1,
+                expected: "Gen1"
+            })
+        ));
     }
 
     #[test]
@@ -431,6 +458,35 @@ mod tests {
             false,
         );
 
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(ReportBuildError::ZoneTypeMismatch {
+                zone: Ms7e75Zone::Jrgb1,
+                expected: "Gen2"
+            })
+        ));
+    }
+
+    fn assert_gen2_static_rgb_layout(zone: Ms7e75Zone, report_id: u8, color: RgbColor) {
+        let buffer = build_zone_static_rgb_report(zone, color, false).unwrap();
+
+        assert_eq!(buffer.len(), GEN2_REPORT_LENGTH);
+        assert_eq!(buffer[0], report_id);
+
+        // Static LEDKeeper2 evidence: Gen2_ApplyPort writes a 20-byte strip
+        // record at j * 20 + 1 and leaves unused strip bytes at 0xFF.
+        assert_eq!(&buffer[1..5], &[0x00, 0x00, 0x00, 0x00]);
+        assert_eq!(buffer[5], LightingMode::Steady as u8);
+        assert_eq!(&buffer[6..9], &[color.red, color.green, color.blue]);
+        assert_eq!(&buffer[9..18], &[0x00; 9]);
+        assert_eq!(buffer[18], 0x00);
+        assert_eq!(buffer[19], 0x00);
+        assert_eq!(buffer[20], 0x01);
+        assert_eq!(buffer[21], 0xFF);
+        assert_eq!(buffer[120], 0xFF);
+
+        // Static LEDKeeper2 evidence: Store is byte 301; Linux semantics for
+        // future dispatch remain unknown because this builder is in-memory only.
+        assert_eq!(buffer[GEN2_REPORT_LENGTH - 1], 0x00);
     }
 }

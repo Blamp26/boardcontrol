@@ -180,6 +180,34 @@ Static implications:
 - A Phase 2 read-only board gate now exists in [`src/linux/hid/gate.rs`](../src/linux/hid/gate.rs); it combines DMI plus inventory metadata only and still enables no HID writes.
 - A Phase 3 dry-run report preview now exists in [`src/linux/hid/dry_run.rs`](../src/linux/hid/dry_run.rs); it builds MB800 reports in memory only, prints report metadata/hex preview, and still performs no HID writes.
 
+## Implementation Audit
+
+Static audit date: 2026-06-16.
+
+Audited implementation: [`src/linux/hid/report.rs`](../src/linux/hid/report.rs).
+
+Result: the current in-memory Rust report builder matches the statically decompiled `MSI_LED.MSI_800sLed` basic Gen1 and Gen2 byte layout. No device access was added or used during this audit.
+
+Confirmed matches:
+
+- Gen1 `JRGB1` uses report ID `0x50`, report length `290`, area index `9`, and 16-byte area records.
+- Gen1 record bytes match `Gen1_ApplyBoard`: mode at `[base+1]`, RGB colors at `[base+2..13]`, option/color-count byte at `[base+14]`, packed option byte at `[base+15]`, cycle byte at `[base+16]`, and store byte at `[289]`.
+- Gen2 `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn` use report IDs `0x90`, `0x91`, `0x92`, and `0x93`, matching port indices `0`, `1`, `2`, and `3`.
+- Gen2 reports use length `302`, an initial fill of `0xFF`, 20-byte strip records, fixed ID little-endian at `[base+1..4]`, mode at `[base+5]`, RGB colors at `[base+6..17]`, option/color-count byte at `[base+18]`, packed option byte at `[base+19]`, LED count at `[base+20]`, and store byte at `[301]`.
+- The builder rejects Gen1/Gen2 zone mismatches instead of silently building a report for the wrong report family.
+
+Tests hardened in this audit:
+
+- Exact Gen2 static red, green, blue, and `EZ Conn` byte-offset tests now assert report ID, report length, fixed ID, mode, RGB bytes, option bytes, LED count, unused `0xFF` bytes, and store byte.
+- Existing Gen1 tests continue to assert the `JRGB1` area-9 offsets and store byte.
+- Zone/report mismatch tests now assert the exact mismatch error variant.
+
+Unknowns that remain unchanged:
+
+- Linux `hidraw` dispatch behavior, report descriptor behavior, and whether a future Linux transport must include or omit the report ID byte remain untested and unknown.
+- The current builder is intentionally in-memory only. It does not open HID devices, call `SetFeature`/`GetFeature`, or touch `/dev/hidraw*`.
+- Phase 4 remains on hold; this audit does not approve writes or write-once behavior.
+
 ## Real-Machine Validation Result
 
 The read-only and dry-run phases were validated on a real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board and passed without device opens or writes.

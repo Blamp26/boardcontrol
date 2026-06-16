@@ -257,6 +257,7 @@ The `dry-run` command builds the Phase 0 report in memory and prints report meta
 - unit tests for each known report length
 - unit tests for area/port mapping
 - golden tests against the static MS-7E75 layout docs
+- exact Gen2 static RGB byte-offset tests for `0x90..0x93` report IDs, 302-byte length, fixed ID, mode, RGB, option, LED-count, unused `0xFF`, and store fields
 - tests that reject non-MS-7E75 DMI strings
 - tests that reject non-matching VID/PID pairs
 - tests that reject missing or malformed serial prefixes
