@@ -180,6 +180,18 @@ Static implications:
 - A Phase 2 read-only board gate now exists in [`src/linux/hid/gate.rs`](../src/linux/hid/gate.rs); it combines DMI plus inventory metadata only and still enables no HID writes.
 - A Phase 3 dry-run report preview now exists in [`src/linux/hid/dry_run.rs`](../src/linux/hid/dry_run.rs); it builds MB800 reports in memory only, prints report metadata/hex preview, and still performs no HID writes.
 
+## Real-Machine Validation Result
+
+The read-only and dry-run phases were validated on a real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board and passed without device opens or writes.
+
+- Phase 1 inventory passed.
+- Phase 2 gate reached `eligible_for_dry_run`.
+- Phase 3 dry-run passed for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
+- No device opens were reported.
+- No writes were performed.
+- Phase 4 is still not implemented and not approved.
+- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+
 ## Next Static-Only Targets
 
 - Reconstruct the full optimized native control flow of `Lib\MsiHid.dll` `openMyDevice*`, especially post-open `HidD_GetAttributes` comparison semantics.

@@ -2,6 +2,90 @@
 
 Status: documentation only. This checklist is for safe read-only and dry-run validation on a real machine before any future Phase 4 write path is even discussed.
 
+## Real-machine validation result
+
+Validation on the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board passed for the already-implemented read-only and dry-run phases.
+
+- Phase 1 inventory passed.
+- Phase 2 gate reached `eligible_for_dry_run`.
+- Phase 3 dry-run passed for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
+- No device opens were reported.
+- No writes were performed.
+- Phase 4 is still not implemented and not approved.
+- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+
+Observed safe command outputs:
+
+- `cargo run -- linux hid inventory`
+  - `candidates = 1`
+  - `syspath = /sys/bus/hid/devices/0003:0DB0:0076.000B`
+  - `vid = 0x0DB0`
+  - `pid = 0x0076`
+  - `mi = unknown`
+  - `col = unknown`
+  - `product = MSI MYSTIC LIGHT`
+  - `serial = 7E7525011601`
+  - `serial_prefix = expected board id 0x7E75`
+  - `plausible_ms7e75 = true`
+  - `devices_opened = no`
+  - `writes_enabled = no`
+  - `support = unsupported/not enabled`
+
+- `cargo run -- linux hid gate`
+  - `dmi_match = true`
+  - `dmi matched MSI MS-7E75 board identity: vendor=Micro-Star International Co., Ltd. board=B850 GAMING PLUS WIFI PZ (MS-7E75) product=MS-7E75`
+  - `hid_inventory_match = true`
+  - `hid_candidates = 1`
+  - `serial_gate = matched expected board id 0x7E75`
+  - `final_status = eligible_for_dry_run`
+  - `writes_enabled = no`
+  - `support = unsupported/not enabled`
+
+- `cargo run -- linux hid dry-run --zone JRGB1 --color ff0000`
+  - `report_family = Gen1`
+  - `report_id = 0x50`
+  - `report_length = 290`
+  - `area_index = 9`
+  - `status = DRY RUN ONLY`
+  - `devices_opened = no`
+  - `writes_performed = no`
+
+- `cargo run -- linux hid dry-run --zone JARGB_V2_1 --color ff0000`
+  - `report_family = Gen2`
+  - `report_id = 0x90`
+  - `report_length = 302`
+  - `port_index = 0`
+  - `status = DRY RUN ONLY`
+  - `devices_opened = no`
+  - `writes_performed = no`
+
+- `cargo run -- linux hid dry-run --zone JARGB_V2_2 --color ff0000`
+  - `report_family = Gen2`
+  - `report_id = 0x91`
+  - `report_length = 302`
+  - `port_index = 1`
+  - `status = DRY RUN ONLY`
+  - `devices_opened = no`
+  - `writes_performed = no`
+
+- `cargo run -- linux hid dry-run --zone JARGB_V2_3 --color ff0000`
+  - `report_family = Gen2`
+  - `report_id = 0x92`
+  - `report_length = 302`
+  - `port_index = 2`
+  - `status = DRY RUN ONLY`
+  - `devices_opened = no`
+  - `writes_performed = no`
+
+- `cargo run -- linux hid dry-run --zone "EZ Conn" --color ff0000`
+  - `report_family = Gen2`
+  - `report_id = 0x93`
+  - `report_length = 302`
+  - `port_index = 3`
+  - `status = DRY RUN ONLY`
+  - `devices_opened = no`
+  - `writes_performed = no`
+
 ## Scope
 
 Use this checklist only for the already-implemented read-only phases:

@@ -30,6 +30,18 @@ The goal is to summarize what is confirmed, which modules look relevant, which m
 - The 7A45 NCT register map was not reused for MS-7E75.
 - No analyzed path is claimed as the MS-7E75 path unless board-specific evidence exists.
 
+## Real-Machine Validation Result
+
+The read-only/dry-run Linux HID path was validated on a real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board and passed without device opens or writes.
+
+- Phase 1 inventory passed.
+- Phase 2 gate reached `eligible_for_dry_run`.
+- Phase 3 dry-run passed for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
+- No device opens were reported.
+- No writes were performed.
+- Phase 4 is still not implemented and not approved.
+- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+
 ## Related Detailed Notes
 
 | Note | Purpose |

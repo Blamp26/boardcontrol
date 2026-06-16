@@ -248,6 +248,18 @@ The `dry-run` command builds the Phase 0 report in memory and prints report meta
 
 For safe real-machine validation of the already-implemented read-only and dry-run phases, see [MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md](MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md). It stays read-only and does not approve any write/apply path.
 
+## Real-machine Validation Result
+
+Validation on the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board passed for the already-implemented read-only and dry-run phases.
+
+- Phase 1 inventory passed.
+- Phase 2 gate reached `eligible_for_dry_run`.
+- Phase 3 dry-run passed for `JRGB1`, `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
+- No device opens were reported.
+- No writes were performed.
+- Phase 4 is still not implemented and not approved.
+- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+
 ## Evidence Still Missing
 
 - Linux HID inventory on a real host
