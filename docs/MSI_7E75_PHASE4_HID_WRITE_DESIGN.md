@@ -15,6 +15,10 @@ report write after the read-only and dry-run gates have passed.
 The current decision is to keep Phase 4 deferred pending the pre-write risk
 assessment in [MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md](MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md).
 That assessment is the governing note for why the write path is still blocked.
+External open-source evidence is summarized in
+[MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md); it
+corroborates the common Mystic Light HID VID/PID but not the exact
+MS-7E75 / MB800 `0x90..0x93` report path.
 
 ## Current Evidence
 
@@ -38,6 +42,7 @@ Real-machine validation passed for the read-only and dry-run phases:
 
 This evidence is enough to design a reviewed first-write experiment. It is not
 enough to implement or run that experiment without a later approval step.
+The external evidence note does not change that conclusion.
 
 ## Prerequisites Before Implementation
 

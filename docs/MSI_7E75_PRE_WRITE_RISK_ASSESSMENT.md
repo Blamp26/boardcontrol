@@ -25,6 +25,8 @@ Why:
 - no device opens were reported in the validated phases
 - no write behavior has been observed yet
 - no recovery behavior has been proven yet
+- external evidence confirms the common `0DB0:0076` Mystic Light HID identity,
+  but does not confirm the MS-7E75 / MB800 `0x90..0x93` write reports
 
 ## What Is Known
 
@@ -86,6 +88,11 @@ layout. It does not prove:
 Dry-run is necessary, but it is not sufficient to justify a first write.
 
 ## External Evidence To Collect Before Any Write
+
+Initial external evidence collection is recorded in
+[MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md).
+It confirms the common VID/PID family but does not lower first-write risk enough
+to change the read-only recommendation.
 
 Collect the following external evidence before any later Phase 4 review:
 

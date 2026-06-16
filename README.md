@@ -31,6 +31,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Linux HID Implementation Plan](docs/MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md) - documentation-only staged plan for future Linux HID inventory, gating, dry-run report building, and a separate reviewed write path.
 - [MSI MS-7E75 Linux HID Validation Checklist](docs/MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md) - read-only real-machine checklist for inventory, gate, and dry-run verification before any future write discussion.
 - [MSI MS-7E75 Pre-Write Risk Assessment](docs/MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md) - observation-only risk assessment and external evidence checklist; explicitly defers Phase 4.
+- [MSI MS-7E75 External HID Evidence Notes](docs/MSI_7E75_EXTERNAL_HID_EVIDENCE.md) - external/open-source evidence review for the common Mystic Light HID identity and MB800 report-risk posture.
 - [MSI MS-7E75 Phase 4 HID Write Design](docs/MSI_7E75_PHASE4_HID_WRITE_DESIGN.md) - documentation-only design for a first reviewed HID `SetFeature` experiment; approves no code and no writes.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - direct static Driver_Engine.dll transport, service, device, and IOCTL evidence.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
