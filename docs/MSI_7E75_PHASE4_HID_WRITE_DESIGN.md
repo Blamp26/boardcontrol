@@ -1,6 +1,6 @@
 # MSI MS-7E75 Phase 4 HID Write Design
 
-Status: documentation-only design. This document approves no code and no writes.
+Status: documentation-only design deferred by risk assessment. This document approves no code and no writes.
 
 ## Purpose
 
@@ -11,6 +11,10 @@ Phase 4 is not Linux HID support, not a general apply path, not an effects
 engine, and not a claim that MS-7E75 hardware access is approved. It is only a
 proposal for one future, separately reviewed, manually confirmed HID feature
 report write after the read-only and dry-run gates have passed.
+
+The current decision is to keep Phase 4 deferred pending the pre-write risk
+assessment in [MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md](MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md).
+That assessment is the governing note for why the write path is still blocked.
 
 ## Current Evidence
 
