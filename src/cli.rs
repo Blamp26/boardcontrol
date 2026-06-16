@@ -509,8 +509,11 @@ fn help() -> String {
         "  msi-ml doctor",
         "  msi-ml detect --board 7A45",
         "  msi-ml linux hid inventory",
+        "    READ ONLY: metadata scan only; devices_opened=no writes_enabled=no support=unsupported/not enabled",
         "  msi-ml linux hid gate",
+        "    READ ONLY: DMI and inventory checks only; devices_opened=no writes_enabled=no support=unsupported/not enabled",
         "  msi-ml linux hid dry-run --zone JARGB_V2_1 --color ff0000",
+        "    DRY RUN ONLY: in-memory report preview; devices_opened=no writes_performed=no support=unsupported/not enabled",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -586,16 +589,19 @@ mod tests {
     #[test]
     fn help_includes_linux_hid_inventory_command() {
         assert!(help().contains("msi-ml linux hid inventory"));
+        assert!(help().contains("READ ONLY: metadata scan only"));
     }
 
     #[test]
     fn help_includes_linux_hid_gate_command() {
         assert!(help().contains("msi-ml linux hid gate"));
+        assert!(help().contains("READ ONLY: DMI and inventory checks only"));
     }
 
     #[test]
     fn help_includes_linux_hid_dry_run_command() {
         assert!(help().contains("msi-ml linux hid dry-run"));
+        assert!(help().contains("DRY RUN ONLY: in-memory report preview"));
     }
 
     #[test]

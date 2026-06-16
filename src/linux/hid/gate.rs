@@ -102,8 +102,15 @@ pub fn evaluate_hid_board_gate(
 }
 
 pub fn format_gate_report(result: &HidBoardGateResult) -> String {
+    let next_safe_command = if result.status == HidGateStatus::EligibleForDryRun {
+        "msi-ml linux hid dry-run --zone JRGB1 --color ff0000"
+    } else {
+        "none"
+    };
+
     [
         "MS-7E75 HID board gate".to_string(),
+        "  status = READ ONLY".to_string(),
         "  mode = read-only metadata and DMI checks only".to_string(),
         format!("  dmi_match = {}", result.dmi.matched),
         format!("  dmi = {}", result.dmi.summary),
@@ -112,9 +119,12 @@ pub fn format_gate_report(result: &HidBoardGateResult) -> String {
         format!("  hid_candidates = {}", result.inventory.candidate_count),
         format!("  serial_gate = {}", result.serial.summary),
         format!("  final_status = {}", result.status.as_str()),
+        "  devices_opened = no".to_string(),
         "  writes_enabled = no".to_string(),
+        "  writes_performed = no".to_string(),
         "  support = unsupported/not enabled".to_string(),
         "  message = Phase 2 gate is read-only; HID writes remain disabled".to_string(),
+        format!("  next_safe_command = {next_safe_command}"),
     ]
     .join("\n")
 }
@@ -346,9 +356,17 @@ mod tests {
             &[matching_candidate()],
         ));
 
+        assert!(report.contains("status = READ ONLY"));
         assert!(report.contains("mode = read-only metadata and DMI checks only"));
+        assert!(report.contains("devices_opened = no"));
         assert!(report.contains("writes_enabled = no"));
+        assert!(report.contains("writes_performed = no"));
         assert!(report.contains("support = unsupported/not enabled"));
+        assert!(
+            report.contains(
+                "next_safe_command = msi-ml linux hid dry-run --zone JRGB1 --color ff0000"
+            )
+        );
     }
 
     fn matching_dmi() -> DmiInfo {

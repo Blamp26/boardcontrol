@@ -164,6 +164,7 @@ pub fn parse_rgb_hex(input: &str) -> Result<RgbColor, DryRunError> {
 pub fn format_dry_run_report(result: &HidDryRunResult) -> String {
     [
         "MS-7E75 HID dry-run".to_string(),
+        "  status = DRY RUN ONLY".to_string(),
         format!("  zone = {}", result.zone),
         format!("  report_family = {}", result.family.as_str()),
         format!("  report_id = 0x{:02X}", result.report_id),
@@ -175,8 +176,8 @@ pub fn format_dry_run_report(result: &HidDryRunResult) -> String {
             result.color.red, result.color.green, result.color.blue
         ),
         format!("  hex_preview = {}", format_hex_preview(&result.buffer, 32)),
-        "  status = DRY RUN ONLY".to_string(),
         "  devices_opened = no".to_string(),
+        "  writes_enabled = no".to_string(),
         "  writes_performed = no".to_string(),
         "  message = no device opened, no writes performed".to_string(),
         "  support = unsupported/not enabled".to_string(),
@@ -332,6 +333,7 @@ mod tests {
 
         assert!(report.contains("DRY RUN ONLY"));
         assert!(report.contains("devices_opened = no"));
+        assert!(report.contains("writes_enabled = no"));
         assert!(report.contains("writes_performed = no"));
         assert!(report.contains("no device opened, no writes performed"));
     }

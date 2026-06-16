@@ -85,10 +85,14 @@ pub fn inventory_candidates_from_root(root: &Path) -> Result<Vec<HidInventoryCan
 pub fn format_inventory_report(candidates: &[HidInventoryCandidate]) -> String {
     let mut lines = vec![
         "MS-7E75 HID inventory".to_string(),
+        "  status = READ ONLY".to_string(),
         "  mode = read-only metadata scan only".to_string(),
         "  support = unsupported/not enabled".to_string(),
         "  devices_opened = no".to_string(),
         "  writes_enabled = no".to_string(),
+        "  writes_performed = no".to_string(),
+        "  message = metadata only; no HID device opened and no report write attempted".to_string(),
+        "  next_safe_command = msi-ml linux hid gate".to_string(),
     ];
 
     if candidates.is_empty() {
@@ -127,7 +131,7 @@ pub fn format_inventory_report(candidates: &[HidInventoryCandidate]) -> String {
             "  plausible_ms7e75 = {}",
             candidate.is_plausible_ms7e75()
         ));
-        lines.push("  status = candidate only; HID support remains disabled".to_string());
+        lines.push("  candidate_status = candidate only; HID support remains disabled".to_string());
     }
 
     lines.join("\n")
@@ -504,10 +508,13 @@ mod tests {
             serial_prefix: SerialPrefixStatus::ExpectedBoardId(0x7E75),
         }]);
 
+        assert!(report.contains("status = READ ONLY"));
         assert!(report.contains("mode = read-only metadata scan only"));
         assert!(report.contains("support = unsupported/not enabled"));
         assert!(report.contains("devices_opened = no"));
         assert!(report.contains("writes_enabled = no"));
+        assert!(report.contains("writes_performed = no"));
+        assert!(report.contains("next_safe_command = msi-ml linux hid gate"));
     }
 
     struct SysfsFixture {
