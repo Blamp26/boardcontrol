@@ -1,6 +1,6 @@
 # MSI MS-7E75 Linux HID Validation Checklist
 
-Status: documentation only. This checklist is for safe read-only and dry-run validation on a real machine before any future Phase 4 write path is even discussed.
+Status: documentation only. This checklist is for safe read-only and dry-run validation on a real machine before any future Phase 4 write path is implemented. The separate Phase 4 design is [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md), and it approves no code or writes.
 
 ## Real-machine validation result
 
@@ -12,7 +12,7 @@ Validation on the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board passed for t
 - No device opens were reported.
 - No writes were performed.
 - Phase 4 is still not implemented and not approved.
-- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+- The next step is review of the separate Phase 4 write design, not immediate write code.
 
 Observed safe command outputs:
 
@@ -177,7 +177,7 @@ Phase 4 can only be considered after all of the following are true:
 - the captured outputs show no device opens and no writes
 - the results are stable across repeated runs on the same host
 
-Even then, Phase 4 still requires a separate reviewed write plan. This checklist does not approve any write/apply command.
+Even then, Phase 4 still requires review of the separate write plan in [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md). This checklist does not approve any write/apply command.
 
 ## Explicit Boundary
 

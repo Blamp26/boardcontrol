@@ -1,6 +1,6 @@
 # MSI MS-7E75 Linux HID Implementation Plan
 
-Status: Phase 0 report builder, Phase 1 read-only HID inventory, Phase 2 board gate, and Phase 3 dry-run reports are implemented in `src/linux/hid/`. No hardware access is enabled or implied by this plan.
+Status: Phase 0 report builder, Phase 1 read-only HID inventory, Phase 2 board gate, and Phase 3 dry-run reports are implemented in `src/linux/hid/`. Phase 4 has a documentation-only design in [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md). No hardware access is enabled or implied by this plan.
 
 ## Purpose
 
@@ -164,15 +164,17 @@ Success criteria:
 
 ## Phase 4: First Reviewed HID SetFeature
 
-Goal: create a separate future commit only after review.
+Goal: create a separate future commit only after review. The detailed documentation-only design is [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md).
+The Phase 4 safety details, forbidden scope, rollback plan, tests, logging, review checklist, and stop conditions are defined in that document and take precedence over this summary.
 
 Planned work:
 
 - gate the command behind an explicit flag such as `--confirm-hid-write`
 - require all previous gates to pass first
-- send only one simple static color report first
+- send only one simple static color report first, preferably `JARGB_V2_1` report `0x90`
 - avoid effect cycling, autodetect loops, and multi-report fan-out
 - keep the path feature-gated and easy to disable
+- keep Phase 4 unimplemented and unapproved until a later task explicitly permits code, device opens, and one reviewed `SetFeature` experiment
 
 Safety gates:
 
@@ -180,6 +182,9 @@ Safety gates:
 - no bulk apply
 - no fallback from failure into retries that broaden scope
 - no support claim until hardware behavior is independently reviewed
+- no all-zone write as the first test
+- no broad/autodetect writes
+- refuse blocked, inconclusive, stale, or ambiguous gates
 
 Success criteria:
 
@@ -258,16 +263,16 @@ Validation on the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board passed for t
 - No device opens were reported.
 - No writes were performed.
 - Phase 4 is still not implemented and not approved.
-- The next step is a separate reviewed Phase 4 write design, not immediate write code.
+- The next step is review of the separate Phase 4 write design, not immediate write code.
 
 ## Evidence Still Missing
 
-- Linux HID inventory on a real host
 - report descriptor details
 - permission model for the target device node
 - confirmation that the serial gate is always present and stable
 - safe proof that `hidraw` is the correct future interface for this board
 - any board-specific behavior that requires a non-HID backend
+- review approval for any future HID write implementation
 
 ## Rollback / Disable Plan
 

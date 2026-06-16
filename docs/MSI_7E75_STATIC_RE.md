@@ -53,6 +53,7 @@ The read-only/dry-run Linux HID path was validated on a real MSI MS-7E75 / B850 
 | [MSI_7E75_HID_MB800_STATIC_RE.md](MSI_7E75_HID_MB800_STATIC_RE.md) | Static deep pass on the MB800 HID helper path, `MsiHid.dll` wrapper evidence, and Gen1/Gen2 feature-report layouts. |
 | [MSI_7E75_MSIHID_STATIC_RE.md](MSI_7E75_MSIHID_STATIC_RE.md) | Static native pass on `Lib\MsiHid.dll` device filtering, open flags, direct `HidD_SetFeature` wrapper behavior, and Linux `hidraw` implications. |
 | [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md) | Documentation-only staged plan for future Linux HID inventory, board gating, dry-run report building, and a separate reviewed write gate. |
+| [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md) | Documentation-only design for a first reviewed HID `SetFeature` experiment; approves no code and no writes. |
 | [MSI_7E75_DRIVER_ENGINE_STATIC_RE.md](MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) | Direct `Driver_Engine.dll` transport, service, device, and IOCTL evidence. |
 | [MSI_7E75_SMBUS_ENGINE_STATIC_RE.md](MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) | Direct `SMBus_Engine.dll` SMBus transaction, controller-selection, and Renesas-adjacent evidence. |
 | [MSI_7E75_RTK_BRIDGE_STATIC_RE.md](MSI_7E75_RTK_BRIDGE_STATIC_RE.md) | Direct `rtk_bridge.dll` Realtek bridge/device-handle evidence and relevance assessment. |
