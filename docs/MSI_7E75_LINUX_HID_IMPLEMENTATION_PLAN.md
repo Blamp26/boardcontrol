@@ -1,6 +1,6 @@
 # MSI MS-7E75 Linux HID Implementation Plan
 
-Status: Phase 0 report builder implemented in `src/linux/hid/report.rs`. No hardware access is enabled or implied by this plan.
+Status: Phase 0 report builder and Phase 1 read-only HID inventory are implemented in `src/linux/hid/`. No hardware access is enabled or implied by this plan.
 
 ## Purpose
 
@@ -87,13 +87,15 @@ Success criteria:
 
 Goal: list candidate HID devices without touching them.
 
+Status: implemented.
+
 Planned work:
 
-- enumerate candidate HID devices through read-only OS metadata only
-- filter strictly by VID/PID `0x0DB0/0x0076`
-- read only sysfs, udev, or hidapi metadata where available
-- record serial prefixes if exposed by metadata
-- print a clear unsupported message until confirmation gates are satisfied
+- [x] enumerate candidate HID devices through read-only OS metadata only
+- [x] filter strictly by VID/PID `0x0DB0/0x0076`
+- [x] read only sysfs, udev, or hidapi metadata where available
+- [x] record serial prefixes if exposed by metadata
+- [x] print a clear unsupported message until confirmation gates are satisfied
 
 Safety gates:
 
@@ -106,8 +108,8 @@ Safety gates:
 
 Success criteria:
 
-- inventory output can identify candidate devices and state whether the target board is plausibly present
-- the output remains explicitly read-only and non-operational
+- [x] inventory output can identify candidate devices and state whether the target board is plausibly present
+- [x] the output remains explicitly read-only and non-operational
 
 ## Phase 2: Board Gate
 
@@ -217,7 +219,11 @@ Suggested commands:
 - `cargo run -- linux hid build --zone EZConn --dry-run`
 - `cargo run -- linux hid apply --zone <name> --confirm-hid-write`
 
-The `apply` command remains future-only and must not be implemented until the reviewed write gate exists.
+Implemented now:
+
+- `cargo run -- linux hid inventory`
+
+The `inventory` command reads sysfs-style HID metadata only. It does not open HID devices, does not use `SetFeature`, and does not enable MS-7E75 writes or support claims.
 
 ## Test Checklist
 

@@ -176,6 +176,7 @@ Static implications:
 - No Linux write/apply implementation should be added until native device matching, descriptor/report-size behavior, and failure modes are documented and reviewed.
 - A separate Linux HID implementation plan is documented in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md); it is documentation-only and does not permit device access.
 - A pure in-memory Phase 0 report builder now exists in [`src/linux/hid/report.rs`](../src/linux/hid/report.rs); it assembles documented buffers only and does not enumerate or open HID devices.
+- A Phase 1 read-only HID inventory now exists in [`src/linux/hid/inventory.rs`](../src/linux/hid/inventory.rs); it parses metadata only, does not open HID devices, and does not enable writes.
 
 ## Next Static-Only Targets
 

@@ -4,6 +4,7 @@ use crate::error::{Error, Result};
 use crate::linux::dev_port::DevPort;
 use crate::linux::dev_port_info::{dev_port_exists, dev_port_metadata_string};
 use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_dmi_info};
+use crate::linux::hid::inventory::{format_inventory_report, inventory_candidates};
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
 use crate::nct::plan::{NctPlanStep, plan_sequence};
@@ -27,9 +28,36 @@ where
     match command.as_str() {
         "doctor" => handle_doctor(),
         "detect" => handle_detect(args),
+        "linux" => handle_linux(args),
         "nct" => handle_nct(args),
         _ => Err(Error::InvalidArgs(help())),
     }
+}
+
+fn handle_linux<I>(mut args: I) -> Result<()>
+where
+    I: Iterator<Item = String>,
+{
+    let Some(subcommand) = args.next() else {
+        return Err(Error::InvalidArgs(help()));
+    };
+
+    if subcommand != "hid" {
+        return Err(Error::InvalidArgs(help()));
+    }
+
+    let Some(hid_subcommand) = args.next() else {
+        return Err(Error::InvalidArgs(help()));
+    };
+
+    if hid_subcommand != "inventory" {
+        return Err(Error::InvalidArgs(help()));
+    }
+
+    ensure_no_extra_args(args)?;
+    let candidates = inventory_candidates()?;
+    println!("{}", format_inventory_report(&candidates));
+    Ok(())
 }
 
 fn handle_doctor() -> Result<()> {
@@ -413,6 +441,7 @@ fn help() -> String {
         "usage:",
         "  msi-ml doctor",
         "  msi-ml detect --board 7A45",
+        "  msi-ml linux hid inventory",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -427,7 +456,7 @@ fn help() -> String {
 mod tests {
     use crate::nct::plan::{NctPlanStep, RmwPlan};
 
-    use super::{format_plan_step, parse_u8_value};
+    use super::{format_plan_step, help, parse_u8_value};
 
     #[test]
     fn parse_u8_accepts_hex_and_decimal() {
@@ -483,5 +512,10 @@ mod tests {
     fn format_plan_step_delay_formats_expected_text() {
         let step = NctPlanStep::Delay(10);
         assert_eq!(format_plan_step(&step), "PLAN delay 10 ms");
+    }
+
+    #[test]
+    fn help_includes_linux_hid_inventory_command() {
+        assert!(help().contains("msi-ml linux hid inventory"));
     }
 }

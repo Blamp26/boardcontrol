@@ -6,6 +6,7 @@ pub enum Error {
     UnsupportedBoard(String),
     HostDmiMismatch(String),
     ProcIoportsReadFailed(String),
+    HidInventoryReadFailed(String),
     DevPortOpenFailed(String),
     DevPortIoFailed(String),
     SequenceBlocked {
@@ -32,6 +33,9 @@ impl fmt::Display for Error {
             Error::HostDmiMismatch(msg) => write!(f, "{msg}"),
             Error::ProcIoportsReadFailed(msg) => {
                 write!(f, "failed to read /proc/ioports: {msg}")
+            }
+            Error::HidInventoryReadFailed(msg) => {
+                write!(f, "failed to read HID inventory metadata: {msg}")
             }
             Error::DevPortOpenFailed(msg) => write!(f, "failed to open /dev/port: {msg}"),
             Error::DevPortIoFailed(msg) => write!(f, "dev/port I/O error: {msg}"),
