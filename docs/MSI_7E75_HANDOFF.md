@@ -29,6 +29,8 @@ Validated:
 - no writes were performed
 - passive MSI Center traffic for `MB -> JARGB_V2_1` used `0x50`/290, not
   `0x90`/302
+- analyzed passive captures did not contain `0x90..0x93`/302, `0x51`/727, or
+  `0xB0`/761 traffic
 
 Explicitly held:
 
@@ -51,9 +53,9 @@ Explicitly held:
   rather than a generic lighting model.
 - the zone mapping documented in the static notes includes `JRGB1`,
   `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
-- `0x90..0x93` remain static/decompiled evidence only until live traffic
-  confirms them.
-- The only live MSI Center write path observed so far is `0x50`/290.
+- The live MSI Center UI path observed for JARGB_V2_1 is 0x50/290.
+- 0x90..0x93 are not live-confirmed.
+- This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
 
@@ -70,6 +72,7 @@ Explicitly held:
 - Do not use SMBus, Super I/O, or `/dev/port` as a fallback for this path.
 - Do not add `write-once` unless a later review separately accepts that risk.
 - Do not use `JARGB_V2_1 -> 0x90` as a first-write plan.
+- Do not use 0x90 as the first-write target.
 - Keep inventory, gate, and dry-run paths read-only.
 
 ## 7. Key Commands Allowed
@@ -90,6 +93,8 @@ feature reports.
 - no approved write or recovery path
 - OpenRGB provides only a near match, not an exact MS-7E75 MB800 confirmation
 - current passive MSI Center capture observed `0x50`/290 for `MB -> JARGB_V2_1`
+- no live `0x51`/727 or `0xB0`/761 traffic was observed in the analyzed
+  captures
 
 ## 9. Best Next Steps
 

@@ -37,6 +37,12 @@ pub struct UsbSetupPacket {
     pub w_length: u16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReportShape {
+    pub report_id: u8,
+    pub report_length: u16,
+}
+
 impl UsbSetupPacket {
     pub const fn report_id(self) -> u8 {
         (self.w_value & 0x00FF) as u8
@@ -52,6 +58,13 @@ impl UsbSetupPacket {
             && self.w_value == 0x0350
             && self.w_length == GEN1_REPORT_LENGTH as u16
     }
+
+    pub const fn report_shape(self) -> ReportShape {
+        ReportShape {
+            report_id: self.report_id(),
+            report_length: self.w_length,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +73,23 @@ pub struct ExtractedHidPayload {
     pub setup_offset: Option<usize>,
     pub payload_offset: usize,
     pub payload: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapturedReportSummary {
+    pub frame: u32,
+    pub setup: UsbSetupPacket,
+    pub payload_prefix: Vec<u8>,
+    pub report_length: usize,
+    pub store_byte: u8,
+}
+
+impl CapturedReportSummary {
+    pub fn is_live_confirmed_0x50_report(&self) -> bool {
+        self.setup.is_msi_center_0x50_setup()
+            && self.report_length == GEN1_REPORT_LENGTH
+            && self.payload_prefix.first().copied() == Some(GEN1_REPORT_ID)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,6 +163,23 @@ pub fn extract_0x50_payload(bytes: &[u8]) -> Result<ExtractedHidPayload, Capture
     }
 
     Err(CaptureCompareError::MissingPayload)
+}
+
+pub fn find_usb_setup_packets(bytes: &[u8]) -> Vec<UsbSetupPacket> {
+    if bytes.len() < USB_SETUP_LEN {
+        return Vec::new();
+    }
+
+    (0..=bytes.len() - USB_SETUP_LEN)
+        .map(|offset| decode_setup(&bytes[offset..offset + USB_SETUP_LEN]))
+        .filter(|setup| setup.bm_request_type == 0x21 && setup.b_request == 0x09)
+        .collect()
+}
+
+pub fn contains_report_shape(bytes: &[u8], shape: ReportShape) -> bool {
+    find_usb_setup_packets(bytes)
+        .iter()
+        .any(|setup| setup.report_shape() == shape)
 }
 
 pub fn compare_0x50_payload_to_gen1_builder(
@@ -218,13 +265,21 @@ mod tests {
     };
 
     use super::{
-        ByteComparisonStatus, compare_0x50_payload_to_gen1_builder, extract_0x50_payload,
+        ByteComparisonStatus, CapturedReportSummary, ReportShape,
+        compare_0x50_payload_to_gen1_builder, contains_report_shape, extract_0x50_payload,
         parse_hex_fixture,
     };
 
-    const FRAME_4781_PREFIX: &str = "50 02 14 ff 09 00 ff";
-    const FRAME_7757_PREFIX: &str = "50 03 ff 00 00 ff 64";
-    const FRAME_4781_WITH_SETUP: &str = "21 09 50 03 00 00 22 01 50 02 14 ff 09 00 ff";
+    const SETUP_0X50_290: &str = "21 09 50 03 00 00 22 01";
+    const FRAME_4781_PREFIX: &str = "50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e";
+    const FRAME_7757_PREFIX: &str = "50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e";
+    const FRAME_4781_WITH_SETUP: &str =
+        "21 09 50 03 00 00 22 01 50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e";
+    const FIXTURE_STREAM_WITH_LIVE_SETUPS: &str = "\
+        21 09 50 03 00 00 22 01 \
+        50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e \
+        21 09 50 03 00 00 22 01 \
+        50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e";
 
     #[test]
     fn setup_prefixed_fixture_extracts_payload_after_usb_setup() {
@@ -245,6 +300,27 @@ mod tests {
         assert_eq!(setup.report_id(), 0x50);
         assert_eq!(setup.w_length, GEN1_REPORT_LENGTH as u16);
         assert!(setup.is_msi_center_0x50_setup());
+    }
+
+    #[test]
+    fn pcap_derived_setup_sequence_decodes_0x0350_and_length_290() {
+        let bytes = parse_hex_fixture(SETUP_0X50_290).unwrap();
+        let setups = super::find_usb_setup_packets(&bytes);
+
+        assert_eq!(setups.len(), 1);
+        assert_eq!(setups[0].bm_request_type, 0x21);
+        assert_eq!(setups[0].b_request, 0x09);
+        assert_eq!(setups[0].w_value, 0x0350);
+        assert_eq!(setups[0].report_id(), 0x50);
+        assert_eq!(setups[0].report_type(), 0x03);
+        assert_eq!(setups[0].w_length, 290);
+        assert_eq!(
+            setups[0].report_shape(),
+            ReportShape {
+                report_id: 0x50,
+                report_length: 290
+            }
+        );
     }
 
     #[test]
@@ -269,7 +345,10 @@ mod tests {
         assert_eq!(comparisons[0].meaning, "report ID");
 
         let differing_offsets = differing_offsets(&comparisons);
-        assert_eq!(differing_offsets, vec![1, 2, 3, 4, 6]);
+        assert_eq!(
+            differing_offsets,
+            vec![1, 2, 3, 4, 6, 10, 11, 12, 13, 15, 16]
+        );
         assert_eq!(comparisons[1].meaning, "Gen1 area 0 mode");
         assert_eq!(comparisons[2].meaning, "Gen1 area 0 color 1 RGB");
         assert_eq!(comparisons[6].meaning, "Gen1 area 0 color 2 RGB");
@@ -287,7 +366,10 @@ mod tests {
         assert_eq!(comparisons[0].meaning, "report ID");
 
         let differing_offsets = differing_offsets(&comparisons);
-        assert_eq!(differing_offsets, vec![1, 2, 5, 6]);
+        assert_eq!(
+            differing_offsets,
+            vec![1, 2, 5, 6, 10, 11, 12, 13, 14, 15, 16]
+        );
         assert_eq!(comparisons[1].meaning, "Gen1 area 0 mode");
         assert_eq!(comparisons[5].meaning, "Gen1 area 0 color 2 RGB");
     }
@@ -300,6 +382,99 @@ mod tests {
         let error = compare_0x50_payload_to_gen1_builder(&[0x90, 0x00], &builder).unwrap_err();
 
         assert!(error.to_string().contains("expected 0x50"));
+    }
+
+    #[test]
+    fn pcap_derived_fixture_stream_contains_no_static_gen2_or_advanced_shapes() {
+        let bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+        let absent_shapes = [
+            ReportShape {
+                report_id: 0x90,
+                report_length: 302,
+            },
+            ReportShape {
+                report_id: 0x91,
+                report_length: 302,
+            },
+            ReportShape {
+                report_id: 0x92,
+                report_length: 302,
+            },
+            ReportShape {
+                report_id: 0x93,
+                report_length: 302,
+            },
+            ReportShape {
+                report_id: 0x51,
+                report_length: 727,
+            },
+            ReportShape {
+                report_id: 0xB0,
+                report_length: 761,
+            },
+        ];
+
+        assert!(contains_report_shape(
+            &bytes,
+            ReportShape {
+                report_id: 0x50,
+                report_length: 290
+            }
+        ));
+
+        for shape in absent_shapes {
+            assert!(
+                !contains_report_shape(&bytes, shape),
+                "fixture unexpectedly contains report 0x{:02X}/{}",
+                shape.report_id,
+                shape.report_length
+            );
+        }
+    }
+
+    #[test]
+    fn frames_4781_and_7757_are_live_confirmed_0x50_reports_with_different_store_bytes() {
+        let setup = super::find_usb_setup_packets(&parse_hex_fixture(SETUP_0X50_290).unwrap())[0];
+        let frame_4781 = CapturedReportSummary {
+            frame: 4781,
+            setup,
+            payload_prefix: parse_hex_fixture(FRAME_4781_PREFIX).unwrap(),
+            report_length: GEN1_REPORT_LENGTH,
+            store_byte: 0x00,
+        };
+        let frame_7757 = CapturedReportSummary {
+            frame: 7757,
+            setup,
+            payload_prefix: parse_hex_fixture(FRAME_7757_PREFIX).unwrap(),
+            report_length: GEN1_REPORT_LENGTH,
+            store_byte: 0x01,
+        };
+
+        assert!(frame_4781.is_live_confirmed_0x50_report());
+        assert!(frame_7757.is_live_confirmed_0x50_report());
+        assert_eq!(frame_4781.store_byte, 0x00);
+        assert_eq!(frame_7757.store_byte, 0x01);
+        assert_ne!(frame_4781.store_byte, frame_7757.store_byte);
+    }
+
+    #[test]
+    fn jargb_v2_1_to_0x90_is_not_live_confirmed_by_capture_fixtures() {
+        let bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+
+        assert!(contains_report_shape(
+            &bytes,
+            ReportShape {
+                report_id: 0x50,
+                report_length: 290
+            }
+        ));
+        assert!(!contains_report_shape(
+            &bytes,
+            ReportShape {
+                report_id: 0x90,
+                report_length: 302
+            }
+        ));
     }
 
     fn differing_offsets(comparisons: &[super::ByteComparison]) -> Vec<usize> {

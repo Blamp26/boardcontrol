@@ -18,11 +18,10 @@ The focus is HID discovery/open evidence, `SetFeature` evidence, Gen1/Gen2 repor
 Later passive USBPcap evidence is recorded in
 [MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md).
 That live MSI Center capture for `MB -> JARGB_V2_1` observed `0x50`/290
-Feature `SET_REPORT` traffic, not `0x90`/302. Do not use
-`JARGB_V2_1 -> 0x90` as a first-write plan. `0x90..0x93` remain
-static/decompiled evidence only until live traffic confirms them. The only live
-MSI Center write path observed so far is `0x50`/290. This does not approve
-Linux writes.
+Feature `SET_REPORT` traffic, not `0x90`/302. The live MSI Center UI path
+observed for JARGB_V2_1 is 0x50/290. 0x90..0x93 are not live-confirmed. Do not
+use 0x90 as the first-write target. This evidence does not approve Linux HID
+writes.
 
 Phase 0 reference implementation: [`src/linux/hid/report.rs`](../src/linux/hid/report.rs)
 
@@ -153,14 +152,18 @@ evidence. A later passive USBPcap capture of MSI Center applying
 `MB -> JARGB_V2_1` observed Feature `SET_REPORT` `0x50` with length `290`, and
 did not observe `0x0390` / 302-byte traffic for that UI action.
 
+The two analyzed passive captures did not contain live MSI Center traffic for
+`0x90`/302, `0x91`/302, `0x92`/302, `0x93`/302, `0x51`/727, or `0xB0`/761.
+Those report families remain static/decompiled evidence only.
+
 Offline builder comparison support in
 [`src/linux/hid/capture_compare.rs`](../src/linux/hid/capture_compare.rs)
 parses pasted capture hex fixtures only. Current tests confirm that the USB
-setup length and payload report ID match the Gen1 builder's `0x50`/290 shape,
-while the available frame prefixes differ in area-0 mode/color bytes from the
-current single-zone `JRGB1` builder fixture. The comparison intentionally does
-not force the builder to match the capture because the full payload and byte
-meanings are not yet proven.
+setup length, payload report ID, and pcap-derived store-byte metadata match the
+Gen1 builder's `0x50`/290 shape. The available frame prefixes differ in area-0
+mode/color and option/cycle-like bytes from the current single-zone `JRGB1`
+builder fixture. The comparison intentionally does not force the builder to
+match the capture because the full payload and byte meanings are not yet proven.
 
 ## Confirmed Vs Unknown
 

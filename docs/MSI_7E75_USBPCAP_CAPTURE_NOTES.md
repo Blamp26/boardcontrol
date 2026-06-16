@@ -7,6 +7,11 @@ Status: documentation only. This document approves no code and no writes.
 A passive Windows USBPcap/Wireshark capture was taken while MSI Center controlled
 the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board.
 
+Two passive captures were analyzed offline:
+
+- `msi_7e75_0x50_capture.pcapng`
+- `msi_7e75_jarbg_v2_1_capture.pcapng`
+
 The exact MSI Center UI path used was:
 
 ```text
@@ -15,7 +20,7 @@ MB -> JARGB_V2_1
 
 The capture scope was limited to observing MSI Center traffic while applying
 changes through that UI path. No custom packet was sent by this project. This
-does not approve Linux writes.
+evidence does not approve Linux HID writes.
 
 ## Observed SET_REPORT Frames
 
@@ -29,14 +34,24 @@ The relevant frames observed for `MB -> JARGB_V2_1` were HID class
 - data starts with `0x50`
 - observed frames include `4781` and `7757`
 
+No live MSI Center traffic in the analyzed captures contained:
+
+- `0x90` / 302
+- `0x91` / 302
+- `0x92` / 302
+- `0x93` / 302
+- `0x51` / 727
+- `0xB0` / 761
+
 No `0x0390` / 302-byte report was observed for this MSI Center UI action.
 
-Observed report starts:
+Observed report starts and store bytes from
+`msi_7e75_jarbg_v2_1_capture.pcapng`:
 
-| Frame | Report start | Notes |
-| --- | --- | --- |
-| `4781` | `50 02 14 ff 09 00 ff ...` | Feature report ID `0x50`, 290-byte transfer. |
-| `7757` | `50 03 ff 00 00 ff 64 ...` | Feature report ID `0x50`, 290-byte transfer. |
+| Frame | Report start | Store byte `[289]` | Notes |
+| --- | --- | --- | --- |
+| `4781` | `50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e ...` | `0x00` | Feature report ID `0x50`, 290-byte transfer. |
+| `7757` | `50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e ...` | `0x01` | Feature report ID `0x50`, 290-byte transfer. |
 
 ## USB Setup Byte Decoding
 
@@ -76,6 +91,11 @@ produce an observed report ID `0x90` with a 302-byte payload.
 Do not use `JARGB_V2_1 -> 0x90` as a first-write plan. `0x90..0x93` remain
 static/decompiled evidence only until live traffic confirms them.
 
+The live MSI Center UI path observed for JARGB_V2_1 is 0x50/290.
+0x90..0x93 are not live-confirmed.
+Do not use 0x90 as the first-write target.
+This evidence does not approve Linux HID writes.
+
 Required wording:
 
 - Do not use JARGB_V2_1 -> 0x90 as a first-write plan.
@@ -83,6 +103,10 @@ Required wording:
   them.
 - The only live MSI Center write path observed so far is 0x50/290.
 - This does not approve Linux writes.
+- The live MSI Center UI path observed for JARGB_V2_1 is 0x50/290.
+- 0x90..0x93 are not live-confirmed.
+- Do not use 0x90 as the first-write target.
+- This evidence does not approve Linux HID writes.
 
 ## Impact On Previous Assumptions
 
@@ -110,11 +134,11 @@ in-memory report builder. It has no CLI entry point and no device access.
 
 The current embedded fixtures use the documented frame starts:
 
-| Frame | Embedded fixture bytes | Source form |
-| --- | --- | --- |
-| `4781` | `50 02 14 ff 09 00 ff` | HID report payload prefix. |
-| `4781` | `21 09 50 03 00 00 22 01 50 02 14 ff 09 00 ff` | USB setup bytes followed by HID report payload prefix. |
-| `7757` | `50 03 ff 00 00 ff 64` | HID report payload prefix. |
+| Frame | Embedded fixture bytes | Store byte metadata | Source form |
+| --- | --- | --- | --- |
+| `4781` | `50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e` | `[289] = 0x00` | HID report payload prefix plus pcap-derived store byte metadata. |
+| `4781` | `21 09 50 03 00 00 22 01 50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e` | `[289] = 0x00` | USB setup bytes followed by HID report payload prefix. |
+| `7757` | `50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e` | `[289] = 0x01` | HID report payload prefix plus pcap-derived store byte metadata. |
 
 The offline extractor treats `21 09 50 03 00 00 22 01` as an 8-byte USB setup
 packet and extracts the HID report payload beginning at the following `0x50`.
@@ -128,31 +152,34 @@ Known matches:
 | USB setup `wValue` | `0x0350`, report type `0x03`, report ID `0x50`. |
 | USB setup `wLength` | `0x0122`, 290 bytes, matching `GEN1_REPORT_LENGTH`. |
 | HID payload byte `[0]` | `0x50`, matching the Gen1 report builder report ID. |
+| Store byte `[289]` | Frame `4781` has `0x00`; frame `7757` has `0x01`, matching the documented Gen1 store-byte offset. |
 
 Known differences in the available prefixes:
 
 | Frame | Differing prefix offsets versus current Gen1 `JRGB1` static-red builder fixture | Gen1 layout interpretation |
 | --- | --- | --- |
-| `4781` | `[1]`, `[2]`, `[3]`, `[4]`, `[6]` | Area 0 mode/color bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
-| `7757` | `[1]`, `[2]`, `[5]`, `[6]` | Area 0 mode/color bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
+| `4781` | `[1]`, `[2]`, `[3]`, `[4]`, `[6]`, `[10]`, `[11]`, `[12]`, `[13]`, `[15]`, `[16]` | Area 0 mode/color and option/cycle-like bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
+| `7757` | `[1]`, `[2]`, `[5]`, `[6]`, `[10]`, `[11]`, `[12]`, `[13]`, `[14]`, `[15]`, `[16]` | Area 0 mode/color and option/cycle-like bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
 
 Unknowns:
 
-- The embedded fixtures are prefixes, not complete 290-byte captured reports.
-- Store byte `[289]` is not present in the current embedded prefixes.
+- The embedded byte strings still include only the first payload bytes, not all
+  290 payload bytes.
+- Store byte `[289]` is represented as pcap-derived metadata in tests and docs;
+  the middle bytes between the prefix and store byte are not embedded here.
 - The visible differences may represent MSI Center's full-board `0x50` state,
   selected mode, colors, brightness/options, persistence, or unrelated populated
   areas. The current evidence is not enough to assign those meanings safely.
 - The builder must not be changed to match these prefixes unless static or
   live evidence proves the byte meanings.
-- `0x90..0x93` remain static/decompiled evidence only until live traffic
-  confirms them.
+- `0x90..0x93` are not live-confirmed and remain static/decompiled evidence
+  only until live traffic confirms them.
 
 ## Phase 4 Status
 
 Phase 4 remains on hold.
 
-This capture does not approve Linux writes, HID device opens, `SetFeature`,
+This evidence does not approve Linux HID writes, HID device opens, `SetFeature`,
 `GetFeature`, `write-once`, `/dev/hidraw*`, `/dev/port`, SMBus, or Super I/O
 access.
 

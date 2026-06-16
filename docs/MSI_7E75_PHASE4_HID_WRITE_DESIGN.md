@@ -5,8 +5,9 @@ Status: documentation-only design deferred by risk assessment. This document app
 Superseding evidence note: passive MSI Center USBPcap evidence for
 `MB -> JARGB_V2_1` is recorded in
 [MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md). The
-only live MSI Center write path observed so far is `0x50`/290. This does not
-approve Linux writes.
+live MSI Center UI path observed for JARGB_V2_1 is 0x50/290. 0x90..0x93 are
+not live-confirmed. Do not use 0x90 as the first-write target. This evidence
+does not approve Linux HID writes.
 
 ## Current decision: Phase 4 hold
 
@@ -35,7 +36,8 @@ External open-source evidence is summarized in
 [MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md); it
 corroborates the common Mystic Light HID VID/PID but not the exact
 MS-7E75 / MB800 `0x90..0x93` report path. Passive USBPcap evidence now shows
-MSI Center using `0x50`/290 for `MB -> JARGB_V2_1`, not `0x90`/302.
+MSI Center using `0x50`/290 for `MB -> JARGB_V2_1`, not `0x90`/302. The
+analyzed captures also did not contain `0x51`/727 or `0xB0`/761 traffic.
 
 ## Current Evidence
 
@@ -62,8 +64,8 @@ It is not enough to implement or run a write experiment without a later approval
 step. The external evidence note does not change that conclusion.
 
 Later USBPcap evidence supersedes the old first-write candidate in this design:
-do not use `JARGB_V2_1 -> 0x90` as a first-write plan. `0x90..0x93` remain
-static/decompiled evidence only until live traffic confirms them.
+do not use `JARGB_V2_1 -> 0x90` as a first-write plan. 0x90..0x93 are not
+live-confirmed. Do not use 0x90 as the first-write target.
 
 ## Current decision: Phase 4 hold
 
@@ -175,8 +177,8 @@ Tests must prove those paths stay read-only.
 There is currently no allowed first write scope.
 
 The previous `JARGB_V2_1` / `0x90` / `302` candidate is blocked by the passive
-USBPcap result. The only live MSI Center write path observed so far is
-`0x50`/290, and that observation still does not approve Linux writes.
+USBPcap result. The live MSI Center UI path observed for JARGB_V2_1 is
+0x50/290, and that observation still does not approve Linux HID writes.
 
 Historical candidate, not approved:
 
@@ -185,8 +187,7 @@ Historical candidate, not approved:
 - Expected report length: `302`.
 - Expected port: `0`.
 
-`0x90..0x93` remain static/decompiled evidence only until live traffic confirms
-them.
+0x90..0x93 are not live-confirmed.
 
 ## Forbidden Write Scope
 
