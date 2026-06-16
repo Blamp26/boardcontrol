@@ -101,6 +101,53 @@ This changes the risk posture:
 - the observed `0x50`/290 traffic still does not prove a safe Linux write path
   or a complete protocol
 
+## Builder Comparison
+
+Offline comparison support was added in
+[`src/linux/hid/capture_compare.rs`](../src/linux/hid/capture_compare.rs). It
+only parses pasted hex fixtures and compares byte slices against the existing
+in-memory report builder. It has no CLI entry point and no device access.
+
+The current embedded fixtures use the documented frame starts:
+
+| Frame | Embedded fixture bytes | Source form |
+| --- | --- | --- |
+| `4781` | `50 02 14 ff 09 00 ff` | HID report payload prefix. |
+| `4781` | `21 09 50 03 00 00 22 01 50 02 14 ff 09 00 ff` | USB setup bytes followed by HID report payload prefix. |
+| `7757` | `50 03 ff 00 00 ff 64` | HID report payload prefix. |
+
+The offline extractor treats `21 09 50 03 00 00 22 01` as an 8-byte USB setup
+packet and extracts the HID report payload beginning at the following `0x50`.
+If a fixture already begins with `0x50`, it is treated as a direct HID report
+payload prefix.
+
+Known matches:
+
+| Offset / field | Evidence |
+| --- | --- |
+| USB setup `wValue` | `0x0350`, report type `0x03`, report ID `0x50`. |
+| USB setup `wLength` | `0x0122`, 290 bytes, matching `GEN1_REPORT_LENGTH`. |
+| HID payload byte `[0]` | `0x50`, matching the Gen1 report builder report ID. |
+
+Known differences in the available prefixes:
+
+| Frame | Differing prefix offsets versus current Gen1 `JRGB1` static-red builder fixture | Gen1 layout interpretation |
+| --- | --- | --- |
+| `4781` | `[1]`, `[2]`, `[3]`, `[4]`, `[6]` | Area 0 mode/color bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
+| `7757` | `[1]`, `[2]`, `[5]`, `[6]` | Area 0 mode/color bytes differ from the builder fixture, which leaves area 0 zeroed when building only `JRGB1` area 9. |
+
+Unknowns:
+
+- The embedded fixtures are prefixes, not complete 290-byte captured reports.
+- Store byte `[289]` is not present in the current embedded prefixes.
+- The visible differences may represent MSI Center's full-board `0x50` state,
+  selected mode, colors, brightness/options, persistence, or unrelated populated
+  areas. The current evidence is not enough to assign those meanings safely.
+- The builder must not be changed to match these prefixes unless static or
+  live evidence proves the byte meanings.
+- `0x90..0x93` remain static/decompiled evidence only until live traffic
+  confirms them.
+
 ## Phase 4 Status
 
 Phase 4 remains on hold.

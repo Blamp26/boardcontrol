@@ -153,6 +153,15 @@ evidence. A later passive USBPcap capture of MSI Center applying
 `MB -> JARGB_V2_1` observed Feature `SET_REPORT` `0x50` with length `290`, and
 did not observe `0x0390` / 302-byte traffic for that UI action.
 
+Offline builder comparison support in
+[`src/linux/hid/capture_compare.rs`](../src/linux/hid/capture_compare.rs)
+parses pasted capture hex fixtures only. Current tests confirm that the USB
+setup length and payload report ID match the Gen1 builder's `0x50`/290 shape,
+while the available frame prefixes differ in area-0 mode/color bytes from the
+current single-zone `JRGB1` builder fixture. The comparison intentionally does
+not force the builder to match the capture because the full payload and byte
+meanings are not yet proven.
+
 ## Confirmed Vs Unknown
 
 Confirmed:

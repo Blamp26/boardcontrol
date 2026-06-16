@@ -1,3 +1,4 @@
+pub mod capture_compare;
 pub mod dry_run;
 pub mod gate;
 pub mod inventory;
