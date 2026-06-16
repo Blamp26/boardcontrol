@@ -16,6 +16,7 @@ Implemented:
 - Phase 2 DMI / HID / serial gate
 - Phase 3 dry-run report preview
 - external evidence notes and OpenRGB protocol comparison
+- passive MSI Center USBPcap capture notes for `MB -> JARGB_V2_1`
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -26,6 +27,8 @@ Validated:
 - dry-run buffers matched the documented layouts
 - no device opens were reported in the validated phases
 - no writes were performed
+- passive MSI Center traffic for `MB -> JARGB_V2_1` used `0x50`/290, not
+  `0x90`/302
 
 Explicitly held:
 
@@ -48,6 +51,9 @@ Explicitly held:
   rather than a generic lighting model.
 - the zone mapping documented in the static notes includes `JRGB1`,
   `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
+- `0x90..0x93` remain static/decompiled evidence only until live traffic
+  confirms them.
+- The only live MSI Center write path observed so far is `0x50`/290.
 
 ## 5. Linux Implementation State
 
@@ -63,6 +69,7 @@ Explicitly held:
 - Do not open HID devices.
 - Do not use SMBus, Super I/O, or `/dev/port` as a fallback for this path.
 - Do not add `write-once` unless a later review separately accepts that risk.
+- Do not use `JARGB_V2_1 -> 0x90` as a first-write plan.
 - Keep inventory, gate, and dry-run paths read-only.
 
 ## 7. Key Commands Allowed
@@ -79,17 +86,18 @@ feature reports.
 
 ## 8. Evidence Gaps
 
-- no exact external confirmation for MB800 `0x90..0x93` reports
+- no live confirmation for MB800 `0x90..0x93` reports
 - no approved write or recovery path
 - OpenRGB provides only a near match, not an exact MS-7E75 MB800 confirmation
+- current passive MSI Center capture observed `0x50`/290 for `MB -> JARGB_V2_1`
 
 ## 9. Best Next Steps
 
-- collect board-family-exact protocol evidence for MB800 `0x90..0x93`
+- decode the passive `0x50`/290 USBPcap payloads offline
+- collect more passive MSI Center traffic for the other zones and restore paths
 - keep adding safer diagnostics and documentation
 - do not add write code yet
 
 ## 10. Latest Commit State
 
-- main is at `1f244c4 Document MS-7E75 Phase 4 hold`
-
+- latest local commit should document the MS-7E75 USBPcap capture evidence

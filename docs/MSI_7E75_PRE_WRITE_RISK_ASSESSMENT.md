@@ -8,8 +8,8 @@ Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
 not add general Linux lighting support yet. Keep only inventory, gate, and
 dry-run paths.
 
-Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
-reports, or a separately accepted risk decision.
+Required unblocker: stronger board-family-exact live evidence for the actual MSI
+Center report family, length, initialization flow, and recovery behavior.
 
 ## Purpose
 
@@ -36,6 +36,8 @@ Why:
 - no recovery behavior has been proven yet
 - external evidence confirms the common `0DB0:0076` Mystic Light HID identity,
   but does not confirm the MS-7E75 / MB800 `0x90..0x93` write reports
+- passive MSI Center USBPcap evidence for `MB -> JARGB_V2_1` observed
+  `0x50`/290, not `0x90`/302
 
 ## What Is Known
 
@@ -51,6 +53,9 @@ Why:
   - `EZ Conn`
 - The current Linux HID work remains read-only and no writes were performed.
 - The target machine still has no validated write path.
+- The only live MSI Center write path observed so far is `0x50`/290.
+- `0x90..0x93` remain static/decompiled evidence only until live traffic
+  confirms them.
 
 ## What Is Still Unknown
 
@@ -102,6 +107,8 @@ Initial external evidence collection is recorded in
 [MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md).
 The focused OpenRGB protocol comparison is recorded in
 [MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md](MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md).
+Passive MSI Center USBPcap evidence is recorded in
+[MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md).
 These notes confirm the common VID/PID family and partial `0x50` / `290`
 evidence, but do not lower first-write risk enough to change the read-only
 recommendation.
@@ -114,6 +121,7 @@ Collect the following external evidence before any later Phase 4 review:
 - compare report IDs `0x90` through `0x93` and `0x50` with known safe
   implementations
 - capture Windows behavior passively if possible without writing custom packets
+- do not use `JARGB_V2_1 -> 0x90` as a first-write plan
 - confirm whether MSI Center can restore default lighting after changes
 - identify whether BIOS has LED restore or default options
 - confirm the board has a recovery path if the lighting controller state becomes
@@ -193,14 +201,16 @@ The current evidence supports continuing observation, evidence collection, and
 read-only validation only. It does not justify opening the device or sending a
 first HID `SetFeature` report.
 
-The OpenRGB protocol comparison keeps this recommendation unchanged because the
-closest OpenRGB JARGB/JAF implementation does not confirm the MS-7E75 MB800
-`0x90..0x93` / `302` report path.
+The OpenRGB protocol comparison and the MSI Center USBPcap capture keep this
+recommendation unchanged. The closest OpenRGB JARGB/JAF implementation does not
+confirm the MS-7E75 MB800 `0x90..0x93` / `302` report path, and the live MSI
+Center `MB -> JARGB_V2_1` path observed so far is `0x50`/290.
 
 Current decision: Phase 4 hold. Keep only inventory, gate, and dry-run paths.
-Do not add general Linux lighting support yet. The unblocker remains stronger
-board-family-exact evidence for MB800 `0x90..0x93` reports, or a separately
-accepted risk decision.
+Do not add general Linux lighting support yet. Do not use `JARGB_V2_1 -> 0x90`
+as a first-write plan. The unblocker is stronger board-family-exact live
+evidence for the actual MSI Center report family, length, initialization flow,
+zone mapping, and recovery behavior, or a separately accepted risk decision.
 
 ## Explicit Boundary
 

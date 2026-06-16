@@ -2,6 +2,13 @@
 
 Status: documentation only. This document approves no code and no writes.
 
+Update: passive MSI Center USBPcap evidence for the real MS-7E75 board is
+recorded in
+[MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md). The
+observed `MB -> JARGB_V2_1` UI path used HID Feature `SET_REPORT` `0x50` with
+length `290`, not `0x90`/302. The only live MSI Center write path observed so
+far is `0x50`/290. This does not approve Linux writes.
+
 ## Purpose
 
 This note compares the repo's static MSI MS-7E75 / MB800 HID report evidence
@@ -262,15 +269,13 @@ The only relevant OpenRGB `0x90..0x93` hits in broader searches were from other
 devices or unrelated protocols, not MSI Mystic Light JARGB/JAF motherboard
 feature reports.
 
-This is the decisive mismatch for Phase 4 risk. The current proposed first HID
-write candidate remains:
+This is the decisive mismatch for Phase 4 risk. OpenRGB does not independently
+confirm that report.
 
-- zone `JARGB_V2_1`
-- report `0x90`
-- length `302`
-- one Gen2 port
-
-OpenRGB does not independently confirm that report.
+Later passive USBPcap evidence also failed to observe `0x90`/302 for MSI
+Center's `MB -> JARGB_V2_1` UI action. Do not use `JARGB_V2_1 -> 0x90` as a
+first-write plan. `0x90..0x93` remain static/decompiled evidence only until
+live traffic confirms them.
 
 ## Feature Report Transport
 
@@ -353,8 +358,8 @@ implementation uses a different JARGB/JAF report family than the repo's current
 MB800 basic Gen2 `0x90..0x93` reports.
 
 Recommendation: keep Phase 4 deferred and stay read-only. Do not implement or
-run HID writes for MS-7E75 unless a later review obtains stronger evidence for
-the exact MB800 report IDs, lengths, initialization flow, zone mapping, and
+run HID writes for MS-7E75 unless a later review obtains stronger live evidence
+for the exact report IDs, lengths, initialization flow, zone mapping, and
 recovery behavior.
 
 ## Explicit Boundary

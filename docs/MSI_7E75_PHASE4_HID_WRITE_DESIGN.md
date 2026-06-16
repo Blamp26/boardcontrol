@@ -2,14 +2,21 @@
 
 Status: documentation-only design deferred by risk assessment. This document approves no code and no writes.
 
+Superseding evidence note: passive MSI Center USBPcap evidence for
+`MB -> JARGB_V2_1` is recorded in
+[MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md). The
+only live MSI Center write path observed so far is `0x50`/290. This does not
+approve Linux writes.
+
 ## Current decision: Phase 4 hold
 
 Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
 not add general Linux lighting support yet. Keep only inventory, gate, and
 dry-run paths.
 
-Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
-reports, or a separately accepted risk decision.
+Required unblocker: stronger board-family-exact live evidence for the actual MSI
+Center report family, length, initialization flow, zone mapping, and recovery
+behavior, or a separately accepted risk decision.
 
 ## Purpose
 
@@ -27,7 +34,8 @@ That assessment is the governing note for why the write path is still blocked.
 External open-source evidence is summarized in
 [MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md); it
 corroborates the common Mystic Light HID VID/PID but not the exact
-MS-7E75 / MB800 `0x90..0x93` report path.
+MS-7E75 / MB800 `0x90..0x93` report path. Passive USBPcap evidence now shows
+MSI Center using `0x50`/290 for `MB -> JARGB_V2_1`, not `0x90`/302.
 
 ## Current Evidence
 
@@ -49,17 +57,22 @@ Real-machine validation passed for the read-only and dry-run phases:
 - No writes were performed.
 - Linux HID support remains unsupported and not enabled.
 
-This evidence is enough to design a reviewed first-write experiment. It is not
-enough to implement or run that experiment without a later approval step.
-The external evidence note does not change that conclusion.
+This evidence is enough to document static report builders and dry-run behavior.
+It is not enough to implement or run a write experiment without a later approval
+step. The external evidence note does not change that conclusion.
+
+Later USBPcap evidence supersedes the old first-write candidate in this design:
+do not use `JARGB_V2_1 -> 0x90` as a first-write plan. `0x90..0x93` remain
+static/decompiled evidence only until live traffic confirms them.
 
 ## Current decision: Phase 4 hold
 
 Do not implement HID writes yet. Do not run write-once. Do not add general
 Linux lighting support yet. Keep only inventory, gate, and dry-run paths.
 
-Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
-reports, or a separately accepted risk decision.
+Required unblocker: stronger board-family-exact live evidence for the actual MSI
+Center report family, length, initialization flow, zone mapping, and recovery
+behavior, or a separately accepted risk decision.
 
 ## Prerequisites Before Implementation
 
@@ -110,9 +123,10 @@ writes and must not be shared with read-only confirmation flags such as
 Without the flag, the command must print the planned report metadata and refuse
 before opening a device.
 
-## Proposed Command Shape
+## Former Proposed Command Shape
 
-Proposed first command:
+The following old proposal is retained only as historical design context and is
+not an active plan. Do not implement it and do not use it for a first write:
 
 ```bash
 cargo run -- linux hid write-once \
@@ -121,11 +135,12 @@ cargo run -- linux hid write-once \
   --confirm-hid-write
 ```
 
-Required behavior:
+If Phase 4 is revisited later, required behavior must be rewritten around the
+live-confirmed report family. Any future design must still:
 
 - Run or require a fresh Phase 3 dry-run result for the same zone and color.
-- Print the exact report family, report ID, report length, port or area, and
-  color before the write.
+- Print the exact live-confirmed report family, report ID, report length, port
+  or area, and color before the write.
 - Open only the single gated target HID device.
 - Send exactly one HID feature report.
 - Exit immediately after the one attempted report.
@@ -157,22 +172,21 @@ Tests must prove those paths stay read-only.
 
 ## Allowed First Write Scope
 
-The allowed first write candidate is:
+There is currently no allowed first write scope.
 
-- One simple static RGB report only.
-- Prefer one Gen2 port.
+The previous `JARGB_V2_1` / `0x90` / `302` candidate is blocked by the passive
+USBPcap result. The only live MSI Center write path observed so far is
+`0x50`/290, and that observation still does not approve Linux writes.
+
+Historical candidate, not approved:
+
 - Preferred first zone: `JARGB_V2_1`.
 - Preferred first report: `0x90`.
 - Expected report length: `302`.
 - Expected port: `0`.
-- One color only, such as `ff0000`.
-- One report dispatch only.
-- No persistence assumptions.
-- No repeated loop.
-- No attempt to restore, animate, synchronize, or fan out to other zones.
 
-The first experiment should be treated as an observation of one report result,
-not as an attempt to set a stable user-facing lighting state.
+`0x90..0x93` remain static/decompiled evidence only until live traffic confirms
+them.
 
 ## Forbidden Write Scope
 
@@ -226,7 +240,7 @@ Required non-hardware tests:
 - gate blocked or inconclusive refusal
 - multiple candidate refusal
 - stale dry-run refusal
-- exact report ID and length assertions
+- exact live-confirmed report ID and length assertions
 - ensure inventory, gate, and dry-run paths do not link to writer
 - mock writer only; no real HID device in tests
 - unit tests for the write gate requiring DMI match
@@ -237,7 +251,8 @@ Required non-hardware tests:
 - unit tests rejecting stale or mismatched dry-run evidence
 - unit tests requiring `--confirm-hid-write`
 - unit tests proving inventory, gate, and dry-run paths do not call write code
-- unit tests proving the first write scope is one zone, one color, one report
+- unit tests proving any future first write scope is one zone, one color, one
+  report
 
 Required review-time checks:
 
@@ -294,8 +309,9 @@ Before implementation starts, reviewers should confirm:
 - the command refuses multiple candidates
 - the command refuses inconclusive metadata
 - the command requires `--confirm-hid-write`
-- the first write is limited to `JARGB_V2_1`, report `0x90`, length `302`,
-  port `0`, one color, one report
+- no `JARGB_V2_1 -> 0x90` first-write plan remains in effect
+- any future first write is limited to a live-confirmed report ID, length, zone,
+  one color, and one report
 - no effects loop, all-zone write, broad autodetect write, fallback transport,
   or persistence behavior has been added
 - read-only and dry-run commands remain unable to open HID devices or write

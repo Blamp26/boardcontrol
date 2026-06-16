@@ -15,6 +15,15 @@ MS-7E75 profile data
 
 The focus is HID discovery/open evidence, `SetFeature` evidence, Gen1/Gen2 report buffer layout, zone-to-report mapping, and Linux implications. This is still static analysis only. It does not enable Linux support and does not prove that writes are safe.
 
+Later passive USBPcap evidence is recorded in
+[MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md).
+That live MSI Center capture for `MB -> JARGB_V2_1` observed `0x50`/290
+Feature `SET_REPORT` traffic, not `0x90`/302. Do not use
+`JARGB_V2_1 -> 0x90` as a first-write plan. `0x90..0x93` remain
+static/decompiled evidence only until live traffic confirms them. The only live
+MSI Center write path observed so far is `0x50`/290. This does not approve
+Linux writes.
+
 Phase 0 reference implementation: [`src/linux/hid/report.rs`](../src/linux/hid/report.rs)
 
 ## Safety Constraints
@@ -138,6 +147,11 @@ This confirms the MB800 helper path uses Windows HID APIs through MSI's native w
 | `MS-7E75_1_JARGB_V2_3` | `UpdateJARGB_V2_Basic(2)` -> `Gen2_SetStrip` -> `Gen2_ApplyPort(Enum_TargetPort.JARGB3)` | Gen2 report `0x92`; port index `2`. | Confirmed static call-path and report layout. |
 | `MS-7E75_1_EZ Conn` | `UpdateJARGB_V2_Basic(3)` -> `Gen2_SetStrip` -> `Gen2_ApplyPort(Enum_TargetPort.JAF)` | Gen2 report `0x93`; port index `3`. | Confirmed static call-path and report layout. |
 | `MS-7E75_1_SELECT ALL` | `Class_MB_800.SetStyle` select-all handling | Aggregate Gen1 and/or per-port Gen2 state depending on profile state. | Confirmed as logical aggregate; no unique report selector. |
+
+Important live-capture qualification: the table above is static/decompiled
+evidence. A later passive USBPcap capture of MSI Center applying
+`MB -> JARGB_V2_1` observed Feature `SET_REPORT` `0x50` with length `290`, and
+did not observe `0x0390` / 302-byte traffic for that UI action.
 
 ## Confirmed Vs Unknown
 

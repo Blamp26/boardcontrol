@@ -35,6 +35,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Phase 4 HID Write Design](docs/MSI_7E75_PHASE4_HID_WRITE_DESIGN.md) - documentation-only write design with an explicit Phase 4 hold note; approves no code and no writes.
 - [MSI MS-7E75 External HID Evidence Notes](docs/MSI_7E75_EXTERNAL_HID_EVIDENCE.md) - external/open-source evidence review for the common Mystic Light HID identity and MB800 report-risk posture.
 - [MSI MS-7E75 OpenRGB Protocol Comparison](docs/MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md) - documentation-only comparison between OpenRGB Mystic Light HID packets and the MS-7E75 MB800 report evidence.
+- [MSI MS-7E75 USBPcap Capture Notes](docs/MSI_7E75_USBPCAP_CAPTURE_NOTES.md) - passive MSI Center capture evidence for `MB -> JARGB_V2_1`; observed live traffic is `0x50`/290, not `0x90`/302.
 - [MSI MS-7E75 Driver Engine Static Notes](docs/MSI_7E75_DRIVER_ENGINE_STATIC_RE.md) - direct static Driver_Engine.dll transport, service, device, and IOCTL evidence.
 - [MSI MS-7E75 SMBus Engine Static Notes](docs/MSI_7E75_SMBUS_ENGINE_STATIC_RE.md) - static SMBus_Engine.dll transaction and controller-selection evidence.
 - [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.
@@ -43,6 +44,12 @@ The current codebase is a safety-first research MVP. It models known register-le
 ## MS-7E75 Safe Linux HID Commands
 
 Status: read-only / dry-run only. Phase 4 is on hold.
+
+Passive MSI Center USBPcap evidence for `MB -> JARGB_V2_1` observed HID
+Feature `SET_REPORT` `0x50` with length `290`. The only live MSI Center write
+path observed so far is `0x50`/290. Do not use `JARGB_V2_1 -> 0x90` as a
+first-write plan; `0x90..0x93` remain static/decompiled evidence only until
+live traffic confirms them. This does not approve Linux writes.
 
 Allowed commands:
 
