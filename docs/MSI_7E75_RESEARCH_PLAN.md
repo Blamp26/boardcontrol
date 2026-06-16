@@ -48,6 +48,7 @@ Phase 1 - Static information only:
 - Record the static MB800 HID wrapper and feature-report layout evidence in [MSI_7E75_HID_MB800_STATIC_RE.md](MSI_7E75_HID_MB800_STATIC_RE.md).
 - Record the native `Lib\MsiHid.dll` device-filtering and direct `HidD_SetFeature` wrapper evidence in [MSI_7E75_MSIHID_STATIC_RE.md](MSI_7E75_MSIHID_STATIC_RE.md).
 - Record the staged Linux HID implementation plan in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md).
+- Record the current-state handoff packet in [MSI_7E75_HANDOFF.md](MSI_7E75_HANDOFF.md).
 - Identify likely Super I/O, EC, RGB, fan, and sensor controller families from public information only.
 - Record uncertainty instead of guessing.
 
