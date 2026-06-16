@@ -40,6 +40,39 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 RTK Bridge Static Notes](docs/MSI_7E75_RTK_BRIDGE_STATIC_RE.md) - static rtk_bridge.dll Realtek bridge/device-handle evidence and MS-7E75 relevance assessment.
 - [MSI MS-7E75 CPU Engine Static Notes](docs/MSI_7E75_CPU_ENGINE_STATIC_RE.md) - static CPU_Engine.dll CPU telemetry/tuning evidence and MS-7E75 relevance assessment.
 
+## MS-7E75 Safe Linux HID Commands
+
+Status: read-only / dry-run only. Phase 4 is on hold.
+
+Allowed commands:
+
+```bash
+cargo run -- linux hid inventory
+cargo run -- linux hid gate
+cargo run -- linux hid dry-run --zone JRGB1 --color ff0000
+cargo run -- linux hid dry-run --zone JARGB_V2_1 --color ff0000
+```
+
+Expected wording:
+
+- `READ ONLY` or `DRY RUN ONLY`
+- `devices_opened = no`
+- `writes_performed = no`
+- `support = unsupported/not enabled`
+
+Forbidden here:
+
+- `write`, `apply`, or `set` commands
+- `write-once`
+- HID `SetFeature`
+- general Linux lighting support claims
+
+Helpful references:
+
+- [Current-State Handoff](docs/MSI_7E75_HANDOFF.md)
+- [Validation Checklist](docs/MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md)
+- [Pre-Write Risk Assessment](docs/MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md)
+
 ## Project Map
 
 ```mermaid
