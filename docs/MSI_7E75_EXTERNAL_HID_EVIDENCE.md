@@ -62,6 +62,12 @@ External sources checked on 2026-06-16:
   - <https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/389>
   - <https://www.reddit.com/r/MSI_Gaming/comments/m38e0e/mystic_light_support_enabled_in_openrgb/>
 
+A focused protocol comparison with OpenRGB's MSI Mystic Light implementation is
+recorded in
+[MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md](MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md).
+It confirms the common HID identity and `0x50` / `290` family evidence, but
+does not confirm the MS-7E75 MB800 `0x90..0x93` / `302` reports.
+
 ## Exact Matches Found
 
 ### `0DB0:0076`
@@ -272,6 +278,10 @@ The external evidence is strong enough to document that `0DB0:0076` is a real
 MSI Mystic Light common HID identity on recent boards. It is not strong enough
 to approve any HID open, `GetFeature`, `SetFeature`, or write path for
 MS-7E75.
+
+The OpenRGB protocol comparison does not change this recommendation. OpenRGB's
+closest newer JARGB/JAF path uses `0x51` per-zone/per-LED packets rather than
+the repo's proposed MB800 `0x90..0x93` / `302` basic Gen2 reports.
 
 Do not implement or run Phase 4 unless a later evidence pass finds a
 board-family-exact source confirming the MB800/NUC126 report IDs, lengths, zone

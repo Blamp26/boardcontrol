@@ -91,8 +91,11 @@ Dry-run is necessary, but it is not sufficient to justify a first write.
 
 Initial external evidence collection is recorded in
 [MSI_7E75_EXTERNAL_HID_EVIDENCE.md](MSI_7E75_EXTERNAL_HID_EVIDENCE.md).
-It confirms the common VID/PID family but does not lower first-write risk enough
-to change the read-only recommendation.
+The focused OpenRGB protocol comparison is recorded in
+[MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md](MSI_7E75_OPENRGB_PROTOCOL_COMPARISON.md).
+These notes confirm the common VID/PID family and partial `0x50` / `290`
+evidence, but do not lower first-write risk enough to change the read-only
+recommendation.
 
 Collect the following external evidence before any later Phase 4 review:
 
@@ -180,6 +183,10 @@ Do not implement or run Phase 4 yet.
 The current evidence supports continuing observation, evidence collection, and
 read-only validation only. It does not justify opening the device or sending a
 first HID `SetFeature` report.
+
+The OpenRGB protocol comparison keeps this recommendation unchanged because the
+closest OpenRGB JARGB/JAF implementation does not confirm the MS-7E75 MB800
+`0x90..0x93` / `302` report path.
 
 ## Explicit Boundary
 
