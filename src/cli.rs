@@ -4,6 +4,7 @@ use crate::error::{Error, Result};
 use crate::linux::dev_port::DevPort;
 use crate::linux::dev_port_info::{dev_port_exists, dev_port_metadata_string};
 use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_dmi_info};
+use crate::linux::hid::gate::{format_gate_report, read_hid_board_gate};
 use crate::linux::hid::inventory::{format_inventory_report, inventory_candidates};
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
@@ -50,14 +51,24 @@ where
         return Err(Error::InvalidArgs(help()));
     };
 
+    if hid_subcommand == "inventory" {
+        ensure_no_extra_args(args)?;
+        let candidates = inventory_candidates()?;
+        println!("{}", format_inventory_report(&candidates));
+        return Ok(());
+    }
+
+    if hid_subcommand == "gate" {
+        ensure_no_extra_args(args)?;
+        let result = read_hid_board_gate()?;
+        println!("{}", format_gate_report(&result));
+        return Ok(());
+    }
+
     if hid_subcommand != "inventory" {
         return Err(Error::InvalidArgs(help()));
     }
-
-    ensure_no_extra_args(args)?;
-    let candidates = inventory_candidates()?;
-    println!("{}", format_inventory_report(&candidates));
-    Ok(())
+    unreachable!()
 }
 
 fn handle_doctor() -> Result<()> {
@@ -442,6 +453,7 @@ fn help() -> String {
         "  msi-ml doctor",
         "  msi-ml detect --board 7A45",
         "  msi-ml linux hid inventory",
+        "  msi-ml linux hid gate",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -517,5 +529,10 @@ mod tests {
     #[test]
     fn help_includes_linux_hid_inventory_command() {
         assert!(help().contains("msi-ml linux hid inventory"));
+    }
+
+    #[test]
+    fn help_includes_linux_hid_gate_command() {
+        assert!(help().contains("msi-ml linux hid gate"));
     }
 }

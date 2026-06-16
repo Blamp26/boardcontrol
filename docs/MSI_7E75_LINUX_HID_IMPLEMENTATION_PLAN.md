@@ -1,6 +1,6 @@
 # MSI MS-7E75 Linux HID Implementation Plan
 
-Status: Phase 0 report builder and Phase 1 read-only HID inventory are implemented in `src/linux/hid/`. No hardware access is enabled or implied by this plan.
+Status: Phase 0 report builder, Phase 1 read-only HID inventory, and Phase 2 board gate are implemented in `src/linux/hid/`. No hardware access is enabled or implied by this plan.
 
 ## Purpose
 
@@ -115,13 +115,15 @@ Success criteria:
 
 Goal: require board identity and explicit confirmation before any later apply path exists.
 
+Status: implemented.
+
 Planned work:
 
-- require DMI to match MS-7E75
-- require HID VID/PID `0x0DB0/0x0076`
-- require serial prefix parsing to `0x7E75` if serial data is available
-- require explicit user confirmation before any future apply command can proceed
-- keep the phase read-only
+- [x] require DMI to match MS-7E75
+- [x] require HID VID/PID `0x0DB0/0x0076`
+- [x] require serial prefix parsing to `0x7E75` if serial data is available
+- [x] require explicit user confirmation before any future apply command can proceed
+- [x] keep the phase read-only
 
 Safety gates:
 
@@ -132,8 +134,8 @@ Safety gates:
 
 Success criteria:
 
-- the CLI can explain why the board is accepted or rejected
-- all three gate types are visible in the output: DMI, HID identity, and user confirmation
+- [x] the CLI can explain why the board is accepted or rejected
+- [x] all three gate types are visible in the output: DMI, HID identity, and user confirmation
 
 ## Phase 3: Dry-Run Apply
 
@@ -222,8 +224,10 @@ Suggested commands:
 Implemented now:
 
 - `cargo run -- linux hid inventory`
+- `cargo run -- linux hid gate`
 
 The `inventory` command reads sysfs-style HID metadata only. It does not open HID devices, does not use `SetFeature`, and does not enable MS-7E75 writes or support claims.
+The `gate` command combines DMI plus read-only HID inventory metadata. It does not open HID devices, does not use `SetFeature`/`GetFeature`, and still enables no writes.
 
 ## Test Checklist
 

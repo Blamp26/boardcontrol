@@ -177,6 +177,7 @@ Static implications:
 - A separate Linux HID implementation plan is documented in [MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md](MSI_7E75_LINUX_HID_IMPLEMENTATION_PLAN.md); it is documentation-only and does not permit device access.
 - A pure in-memory Phase 0 report builder now exists in [`src/linux/hid/report.rs`](../src/linux/hid/report.rs); it assembles documented buffers only and does not enumerate or open HID devices.
 - A Phase 1 read-only HID inventory now exists in [`src/linux/hid/inventory.rs`](../src/linux/hid/inventory.rs); it parses metadata only, does not open HID devices, and does not enable writes.
+- A Phase 2 read-only board gate now exists in [`src/linux/hid/gate.rs`](../src/linux/hid/gate.rs); it combines DMI plus inventory metadata only and still enables no HID writes.
 
 ## Next Static-Only Targets
 
