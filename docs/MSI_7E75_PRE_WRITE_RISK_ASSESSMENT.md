@@ -2,6 +2,15 @@
 
 Status: documentation only. This document approves no code and no writes.
 
+## Current decision: Phase 4 hold
+
+Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
+not add general Linux lighting support yet. Keep only inventory, gate, and
+dry-run paths.
+
+Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
+reports, or a separately accepted risk decision.
+
 ## Purpose
 
 This document records the current risk posture for the MSI MS-7E75 / B850
@@ -187,6 +196,11 @@ first HID `SetFeature` report.
 The OpenRGB protocol comparison keeps this recommendation unchanged because the
 closest OpenRGB JARGB/JAF implementation does not confirm the MS-7E75 MB800
 `0x90..0x93` / `302` report path.
+
+Current decision: Phase 4 hold. Keep only inventory, gate, and dry-run paths.
+Do not add general Linux lighting support yet. The unblocker remains stronger
+board-family-exact evidence for MB800 `0x90..0x93` reports, or a separately
+accepted risk decision.
 
 ## Explicit Boundary
 

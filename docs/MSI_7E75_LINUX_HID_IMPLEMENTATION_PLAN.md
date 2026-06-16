@@ -2,6 +2,15 @@
 
 Status: Phase 0 report builder, Phase 1 read-only HID inventory, Phase 2 board gate, and Phase 3 dry-run reports are implemented in `src/linux/hid/`. Phase 4 is deferred pending the pre-write risk assessment in [MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md](MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md). No hardware access is enabled or implied by this plan.
 
+## Current decision: Phase 4 hold
+
+Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
+not add general Linux lighting support yet. Keep only inventory, gate, and
+dry-run paths.
+
+Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
+reports, or a separately accepted risk decision.
+
 ## Purpose
 
 This plan defines a staged, safety-first path for future Linux HID support for the MS-7E75 MB800 lighting path.
@@ -166,6 +175,10 @@ Success criteria:
 
 Goal: create a separate future commit only after review. The Phase 4 path is currently deferred by [MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md](MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md). The detailed design remains in [MSI_7E75_PHASE4_HID_WRITE_DESIGN.md](MSI_7E75_PHASE4_HID_WRITE_DESIGN.md), but the risk assessment takes precedence while Phase 4 is blocked.
 The Phase 4 safety details, forbidden scope, rollback plan, tests, logging, review checklist, and stop conditions are defined in that document and take precedence over this summary.
+
+Current decision: Phase 4 hold. Do not implement HID writes yet. Do not run
+write-once. Do not add general Linux lighting support yet. Keep only inventory,
+gate, and dry-run paths.
 
 Planned work:
 

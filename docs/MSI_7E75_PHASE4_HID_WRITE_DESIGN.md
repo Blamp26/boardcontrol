@@ -2,6 +2,15 @@
 
 Status: documentation-only design deferred by risk assessment. This document approves no code and no writes.
 
+## Current decision: Phase 4 hold
+
+Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
+not add general Linux lighting support yet. Keep only inventory, gate, and
+dry-run paths.
+
+Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
+reports, or a separately accepted risk decision.
+
 ## Purpose
 
 The exact purpose of Phase 4 is to design the first reviewed HID `SetFeature`
@@ -43,6 +52,14 @@ Real-machine validation passed for the read-only and dry-run phases:
 This evidence is enough to design a reviewed first-write experiment. It is not
 enough to implement or run that experiment without a later approval step.
 The external evidence note does not change that conclusion.
+
+## Current decision: Phase 4 hold
+
+Do not implement HID writes yet. Do not run write-once. Do not add general
+Linux lighting support yet. Keep only inventory, gate, and dry-run paths.
+
+Required unblocker: stronger board-family-exact evidence for MB800 `0x90..0x93`
+reports, or a separately accepted risk decision.
 
 ## Prerequisites Before Implementation
 
