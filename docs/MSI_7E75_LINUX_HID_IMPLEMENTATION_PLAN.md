@@ -244,6 +244,10 @@ The `dry-run` command builds the Phase 0 report in memory and prints report meta
 - tests that reject missing or malformed serial prefixes
 - tests that keep all Phase 1 and Phase 3 paths read-only
 
+## Real-Machine Validation
+
+For safe real-machine validation of the already-implemented read-only and dry-run phases, see [MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md](MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md). It stays read-only and does not approve any write/apply path.
+
 ## Evidence Still Missing
 
 - Linux HID inventory on a real host
