@@ -2,6 +2,11 @@
 
 Status: Phase 0 report builder, Phase 1 read-only HID inventory, Phase 2 board gate, and Phase 3 dry-run reports are implemented in `src/linux/hid/`. Phase 4 is deferred pending the pre-write risk assessment in [MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md](MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md). No hardware access is enabled or implied by this plan.
 
+A repo-local safety tripwire test now scans Rust source files plus `Cargo.toml`
+for Phase 4 write markers such as `confirm-hid-write`, `SetFeature`, and direct
+`/dev/hidraw` references. It intentionally excludes documentation files because
+the docs must continue to discuss the blocked future write path.
+
 ## Current decision: Phase 4 hold
 
 Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
