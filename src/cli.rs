@@ -4,8 +4,12 @@ use crate::error::{Error, Result};
 use crate::linux::dev_port::DevPort;
 use crate::linux::dev_port_info::{dev_port_exists, dev_port_metadata_string};
 use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_dmi_info};
+use crate::linux::hid::dry_run::{
+    build_dry_run_report, format_dry_run_report, parse_rgb_hex, run_live_dry_run,
+};
 use crate::linux::hid::gate::{format_gate_report, read_hid_board_gate};
 use crate::linux::hid::inventory::{format_inventory_report, inventory_candidates};
+use crate::linux::hid::report::Ms7e75Zone;
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
 use crate::nct::plan::{NctPlanStep, plan_sequence};
@@ -65,10 +69,51 @@ where
         return Ok(());
     }
 
+    if hid_subcommand == "dry-run" {
+        return handle_linux_hid_dry_run(args);
+    }
+
     if hid_subcommand != "inventory" {
         return Err(Error::InvalidArgs(help()));
     }
     unreachable!()
+}
+
+fn handle_linux_hid_dry_run<I>(mut args: I) -> Result<()>
+where
+    I: Iterator<Item = String>,
+{
+    let mut zone = None;
+    let mut color = None;
+    let mut fixture_gate_status = None;
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--zone" => zone = args.next(),
+            "--color" => color = args.next(),
+            "--fixture-gate-status" => fixture_gate_status = args.next(),
+            _ => return Err(Error::InvalidArgs(help())),
+        }
+    }
+
+    let zone_name = zone.ok_or_else(|| Error::InvalidArgs(help()))?;
+    let color_value = color.ok_or_else(|| Error::InvalidArgs(help()))?;
+    let zone =
+        Ms7e75Zone::from_name(&zone_name).map_err(|err| Error::InvalidArgs(err.to_string()))?;
+    let color = parse_rgb_hex(&color_value).map_err(|err| Error::InvalidArgs(err.to_string()))?;
+
+    let fixture_gate_status = fixture_gate_status
+        .map(|value| parse_hid_gate_status(&value))
+        .transpose()?;
+    let result = if let Some(fixture_gate_status) = fixture_gate_status {
+        let gate = read_hid_board_gate()?;
+        build_dry_run_report(zone, color, &gate, Some(fixture_gate_status))
+            .map_err(|err| Error::InvalidArgs(err.to_string()))?
+    } else {
+        run_live_dry_run(zone, color).map_err(|err| Error::InvalidArgs(err.to_string()))?
+    };
+    println!("{}", format_dry_run_report(&result));
+    Ok(())
 }
 
 fn handle_doctor() -> Result<()> {
@@ -447,6 +492,17 @@ fn parse_u8_value(input: &str) -> Result<u8> {
     }
 }
 
+fn parse_hid_gate_status(input: &str) -> Result<crate::linux::hid::gate::HidGateStatus> {
+    match input {
+        "eligible_for_dry_run" => Ok(crate::linux::hid::gate::HidGateStatus::EligibleForDryRun),
+        "blocked" => Ok(crate::linux::hid::gate::HidGateStatus::Blocked),
+        "inconclusive" => Ok(crate::linux::hid::gate::HidGateStatus::Inconclusive),
+        _ => Err(Error::InvalidArgs(format!(
+            "invalid fixture gate status: {input}"
+        ))),
+    }
+}
+
 fn help() -> String {
     [
         "usage:",
@@ -454,6 +510,7 @@ fn help() -> String {
         "  msi-ml detect --board 7A45",
         "  msi-ml linux hid inventory",
         "  msi-ml linux hid gate",
+        "  msi-ml linux hid dry-run --zone JARGB_V2_1 --color ff0000",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -468,7 +525,7 @@ fn help() -> String {
 mod tests {
     use crate::nct::plan::{NctPlanStep, RmwPlan};
 
-    use super::{format_plan_step, help, parse_u8_value};
+    use super::{format_plan_step, help, parse_hid_gate_status, parse_u8_value};
 
     #[test]
     fn parse_u8_accepts_hex_and_decimal() {
@@ -534,5 +591,27 @@ mod tests {
     #[test]
     fn help_includes_linux_hid_gate_command() {
         assert!(help().contains("msi-ml linux hid gate"));
+    }
+
+    #[test]
+    fn help_includes_linux_hid_dry_run_command() {
+        assert!(help().contains("msi-ml linux hid dry-run"));
+    }
+
+    #[test]
+    fn parse_hid_gate_status_accepts_expected_values() {
+        assert!(matches!(
+            parse_hid_gate_status("eligible_for_dry_run").unwrap(),
+            crate::linux::hid::gate::HidGateStatus::EligibleForDryRun
+        ));
+        assert!(matches!(
+            parse_hid_gate_status("blocked").unwrap(),
+            crate::linux::hid::gate::HidGateStatus::Blocked
+        ));
+        assert!(matches!(
+            parse_hid_gate_status("inconclusive").unwrap(),
+            crate::linux::hid::gate::HidGateStatus::Inconclusive
+        ));
+        assert!(parse_hid_gate_status("bad").is_err());
     }
 }

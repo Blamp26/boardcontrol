@@ -178,6 +178,7 @@ Static implications:
 - A pure in-memory Phase 0 report builder now exists in [`src/linux/hid/report.rs`](../src/linux/hid/report.rs); it assembles documented buffers only and does not enumerate or open HID devices.
 - A Phase 1 read-only HID inventory now exists in [`src/linux/hid/inventory.rs`](../src/linux/hid/inventory.rs); it parses metadata only, does not open HID devices, and does not enable writes.
 - A Phase 2 read-only board gate now exists in [`src/linux/hid/gate.rs`](../src/linux/hid/gate.rs); it combines DMI plus inventory metadata only and still enables no HID writes.
+- A Phase 3 dry-run report preview now exists in [`src/linux/hid/dry_run.rs`](../src/linux/hid/dry_run.rs); it builds MB800 reports in memory only, prints report metadata/hex preview, and still performs no HID writes.
 
 ## Next Static-Only Targets
 
