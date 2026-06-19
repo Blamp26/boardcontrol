@@ -134,6 +134,22 @@ pub struct ByteComparison {
     pub meaning: String,
 }
 
+pub fn first_difference_offset(lhs: &[u8], rhs: &[u8]) -> Option<usize> {
+    let shared_len = lhs.len().min(rhs.len());
+
+    for offset in 0..shared_len {
+        if lhs[offset] != rhs[offset] {
+            return Some(offset);
+        }
+    }
+
+    if lhs.len() == rhs.len() {
+        None
+    } else {
+        Some(shared_len)
+    }
+}
+
 pub fn parse_hex_fixture(input: &str) -> Result<Vec<u8>, CaptureCompareError> {
     let mut bytes = Vec::new();
 
@@ -312,7 +328,7 @@ mod tests {
     use super::{
         ByteComparisonStatus, CapturedReportSummary, LiveJargbV2_1Preset, ReportShape,
         build_live_confirmed_jargb_v2_1_0x50_payload, compare_0x50_payload_to_gen1_builder,
-        contains_report_shape, extract_0x50_payload, parse_hex_fixture,
+        contains_report_shape, extract_0x50_payload, first_difference_offset, parse_hex_fixture,
     };
 
     const SETUP_0X50_290: &str = "21 09 50 03 00 00 22 01";
@@ -335,6 +351,7 @@ mod tests {
         label: &'static str,
         bytes: &'static str,
         store_byte: u8,
+        full_payload_with_setup: Option<&'static str>,
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -348,26 +365,31 @@ mod tests {
             label: "steady_red",
             bytes: "21 09 50 03 00 00 22 01 50 02 ff 00 00",
             store_byte: 0x01,
+            full_payload_with_setup: None,
         },
         LiveModeFixture {
             label: "steady_green",
             bytes: "21 09 50 03 00 00 22 01 50 02 00 ff 00",
             store_byte: 0x01,
+            full_payload_with_setup: None,
         },
         LiveModeFixture {
             label: "steady_blue",
             bytes: "21 09 50 03 00 00 22 01 50 02 00 00 ff",
             store_byte: 0x01,
+            full_payload_with_setup: None,
         },
         LiveModeFixture {
             label: "breath_red",
             bytes: "21 09 50 03 00 00 22 01 50 04 ff 00 00",
             store_byte: 0x01,
+            full_payload_with_setup: None,
         },
         LiveModeFixture {
             label: "off_red_rgb_retained",
             bytes: "21 09 50 03 00 00 22 01 50 00 ff 00 00",
             store_byte: 0x01,
+            full_payload_with_setup: None,
         },
     ];
 
@@ -497,6 +519,75 @@ mod tests {
             );
             assert_eq!(extracted.payload[0], 0x50, "fixture {}", fixture.label);
             assert_eq!(fixture.store_byte, 0x01, "fixture {}", fixture.label);
+        }
+    }
+
+    #[test]
+    fn checked_in_live_mode_fixtures_are_still_prefix_only_not_full_290_byte_dumps() {
+        for fixture in LIVE_MODE_FIXTURES {
+            let extracted =
+                extract_0x50_payload(&parse_hex_fixture(fixture.bytes).unwrap()).unwrap();
+
+            assert!(
+                extracted.payload.len() < GEN1_REPORT_LENGTH,
+                "fixture {} unexpectedly became full-length without updating this test",
+                fixture.label
+            );
+            assert!(
+                fixture.full_payload_with_setup.is_none(),
+                "fixture {} unexpectedly has a full payload; enable the byte-for-byte test",
+                fixture.label
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "full 290-byte MSI Center payload dumps are not checked into this repo yet"]
+    fn offline_live_builder_matches_full_captured_payloads_byte_for_byte() {
+        for fixture in LIVE_MODE_FIXTURES {
+            let full_fixture = fixture.full_payload_with_setup.unwrap_or_else(|| {
+                panic!(
+                    "full 290-byte payload for {} is not checked into this repo yet",
+                    fixture.label
+                )
+            });
+            let extracted =
+                extract_0x50_payload(&parse_hex_fixture(full_fixture).unwrap()).unwrap();
+            let expected_builder = match fixture.label {
+                "steady_red" => {
+                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyRed)
+                }
+                "steady_green" => {
+                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyGreen)
+                }
+                "steady_blue" => {
+                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyBlue)
+                }
+                "breath_red" => {
+                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::BreathRed)
+                }
+                "off_red_rgb_retained" => build_live_confirmed_jargb_v2_1_0x50_payload(
+                    LiveJargbV2_1Preset::OffRetainedRed,
+                ),
+                other => panic!("unexpected live fixture label: {other}"),
+            };
+
+            assert_eq!(extracted.payload.len(), GEN1_REPORT_LENGTH);
+            assert_eq!(expected_builder.len(), GEN1_REPORT_LENGTH);
+            assert_eq!(
+                first_difference_offset(&extracted.payload, &expected_builder),
+                None,
+                "fixture {} differs at offset {:?}",
+                fixture.label,
+                first_difference_offset(&extracted.payload, &expected_builder)
+            );
+            assert_eq!(
+                extracted.payload,
+                expected_builder.to_vec(),
+                "fixture {} first differing offset {:?}",
+                fixture.label,
+                first_difference_offset(&extracted.payload, &expected_builder)
+            );
         }
     }
 
@@ -718,6 +809,30 @@ mod tests {
         assert_eq!(&payload[2..5], &expected_rgb);
         assert_eq!(&payload[..fixture.len()], fixture.as_slice());
         assert_eq!(payload[GEN1_REPORT_LENGTH - 1], 0x01);
+    }
+
+    #[test]
+    fn first_difference_offset_reports_first_byte_difference() {
+        assert_eq!(
+            super::first_difference_offset(&[0x50, 0x02], &[0x50, 0x04]),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn first_difference_offset_reports_length_difference_after_shared_prefix() {
+        assert_eq!(
+            super::first_difference_offset(&[0x50, 0x02], &[0x50, 0x02, 0xFF]),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn first_difference_offset_reports_none_for_equal_buffers() {
+        assert_eq!(
+            super::first_difference_offset(&[0x50, 0x02], &[0x50, 0x02]),
+            None
+        );
     }
 
     fn differing_offsets(comparisons: &[super::ByteComparison]) -> Vec<usize> {

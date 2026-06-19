@@ -20,6 +20,8 @@ Implemented:
 - offline `0x50`/290 fixture comparison for the newer USBPcap4 mode captures
 - offline-only local generator/check for live `JARGB_V2_1` `0x50`/290 payload
   prefixes
+- byte-for-byte comparison scaffolding for future full 290-byte checked-in
+  payload dumps
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -64,6 +66,8 @@ Explicitly held:
   off `0x00`, with RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 - A separate offline-only local generator/check now exists for those
   live-confirmed `JARGB_V2_1` `0x50`/290 payload prefixes.
+- Full local byte-for-byte equality is still not proven because the full
+  290-byte dumps are not checked into this repo yet.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State

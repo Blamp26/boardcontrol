@@ -177,6 +177,12 @@ captures. It is intentionally separate from the existing broad Gen1/Gen2 report
 builders because the older static builder model does not by itself explain the
 live `JARGB_V2_1` `0x50` path.
 
+It also now includes byte-for-byte comparison scaffolding and a first-difference
+helper for the day when the full 290-byte MSI Center payload dumps are checked
+into the repo. As of this update, the checked-in MSI Center fixtures are still
+prefix-only plus observed byte `[289]` metadata, so the repo does not yet prove
+full 290-byte equality against the live captures.
+
 The current embedded fixtures use the documented frame starts:
 
 | Frame | Embedded fixture bytes | Store byte metadata | Source form |
@@ -201,6 +207,7 @@ Known matches:
 | HID payload byte `[1]` | Observed live mode byte: steady `0x02`, breath `0x04`, off `0x00`. |
 | HID payload bytes `[2..4]` | Observed live RGB prefix: red `ff0000`, green `00ff00`, blue `0000ff`. |
 | Offline local generator/check | Builds the observed `JARGB_V2_1` `0x50`/290 payload prefix for steady red/green/blue, breath red, and off with retained red. |
+| Full byte-for-byte repo status | Not yet proven locally because the checked-in fixtures are still prefixes rather than complete 290-byte payload dumps. |
 
 Known differences in the available prefixes:
 
@@ -216,6 +223,9 @@ Unknowns:
 - Store byte `[289]` is represented as observed metadata in tests and docs; the
   middle bytes between the prefix and store byte are not embedded here, and the
   exact meaning of byte `[289]` is still not proven.
+- Because the full 290-byte MSI Center dumps are not checked into this repo yet,
+  full byte-for-byte equality between the offline builder and the live captures
+  is not yet proven locally.
 - The visible differences may represent MSI Center's full-board `0x50` state,
   selected mode, colors, brightness/options, persistence, or unrelated populated
   areas. The current evidence is not enough to assign those meanings safely.
@@ -231,6 +241,9 @@ Phase 4 remains on hold.
 This evidence does not approve Linux HID writes, HID device opens, `SetFeature`,
 `GetFeature`, `write-once`, `/dev/hidraw*`, `/dev/port`, SMBus, or Super I/O
 access.
+
+Full offline equality, once later proven with checked-in full dumps, would
+still not by itself approve Linux HID writes.
 
 ## Next Safe Analysis Steps
 

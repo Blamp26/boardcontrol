@@ -185,6 +185,12 @@ the live-confirmed `JARGB_V2_1` `0x50`/290 payload prefix variants. It is kept
 separate from the broader static builders so the repo does not silently change
 shared behavior based on partial live-capture evidence.
 
+The module now also includes byte-for-byte comparison scaffolding for future
+full 290-byte MSI Center dumps, plus a small first-difference helper for test
+output. However, the checked-in live fixtures are still prefix-only rather than
+complete 290-byte payload dumps, so the repo does not yet prove full
+byte-for-byte equality against the captured MSI Center packets.
+
 ## Confirmed Vs Unknown
 
 Confirmed:
@@ -204,6 +210,8 @@ Confirmed:
   and RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 - A local offline-only generator/check now exists for those live-confirmed
   `JARGB_V2_1` `0x50`/290 payload prefixes.
+- Full local byte-for-byte equality is still not proven because the full
+  290-byte dumps are not checked into this repo yet.
 
 Unknown:
 
@@ -263,6 +271,8 @@ Unknowns that remain unchanged:
 - Phase 4 remains on hold; this audit does not approve writes or write-once behavior.
 - The newer live `0x50` evidence does not weaken the safety tripwire and does
   not approve Linux HID writes.
+- Even future full offline equality against checked-in dumps would not by
+  itself approve Linux HID writes.
 
 ## Real-Machine Validation Result
 
