@@ -7,6 +7,7 @@ use crate::linux::dmi::{PreflightStatus, evaluate_hardware_read_preflight, read_
 use crate::linux::hid::dry_run::{
     build_dry_run_report, format_dry_run_report, parse_rgb_hex, run_live_dry_run,
 };
+use crate::linux::hid::first_write_checklist::format_first_write_checklist;
 use crate::linux::hid::gate::{format_gate_report, read_hid_board_gate};
 use crate::linux::hid::inventory::{format_inventory_report, inventory_candidates};
 use crate::linux::hid::live_payload_dry_run::{
@@ -78,6 +79,12 @@ where
 
     if hid_subcommand == "exact-live-dry-run" {
         return handle_linux_hid_exact_live_dry_run(args);
+    }
+
+    if hid_subcommand == "first-write-checklist" {
+        ensure_no_extra_args(args)?;
+        println!("{}", format_first_write_checklist());
+        return Ok(());
     }
 
     if hid_subcommand != "inventory" {
@@ -563,6 +570,8 @@ fn help() -> String {
         "    DRY RUN ONLY: in-memory report preview; devices_opened=no writes_performed=no support=unsupported/not enabled",
         "  msi-ml linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000",
         "    OFFLINE ONLY / DRY RUN ONLY: exact checked-in MSI Center 0x50/290 payload; devices_opened=no writes_enabled=no writes_performed=no",
+        "  msi-ml linux hid first-write-checklist",
+        "    READ ONLY: checklist/status only; devices_opened=no writes_enabled=no writes_performed=no phase4_status=HOLD first_write_ready=no",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -581,6 +590,7 @@ mod tests {
         build_linux_hid_exact_live_dry_run_output, format_plan_step, help, parse_hid_gate_status,
         parse_u8_value,
     };
+    use crate::linux::hid::first_write_checklist::format_first_write_checklist;
 
     #[test]
     fn parse_u8_accepts_hex_and_decimal() {
@@ -663,6 +673,12 @@ mod tests {
     }
 
     #[test]
+    fn help_includes_first_write_checklist_command() {
+        assert!(help().contains("msi-ml linux hid first-write-checklist"));
+        assert!(help().contains("phase4_status=HOLD first_write_ready=no"));
+    }
+
+    #[test]
     fn exact_live_dry_run_cli_output_contains_required_safety_fields() {
         let output = build_linux_hid_exact_live_dry_run_output(
             vec![
@@ -701,6 +717,16 @@ mod tests {
         .unwrap_err();
 
         assert!(error.to_string().contains("unsupported color"));
+    }
+
+    #[test]
+    fn first_write_checklist_cli_output_contains_hold_status() {
+        let output = format_first_write_checklist();
+
+        assert!(output.contains("writes_enabled = no"));
+        assert!(output.contains("writes_performed = no"));
+        assert!(output.contains("phase4_status = HOLD"));
+        assert!(output.contains("first_write_ready = no"));
     }
 
     #[test]

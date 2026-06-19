@@ -24,6 +24,7 @@ Implemented:
   equality checks
 - exact offline/dry-run CLI output for the checked-in live `JARGB_V2_1`
   `0x50`/290 payloads
+- formal first-write checklist and read-only decision-gate command
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -72,6 +73,9 @@ Explicitly held:
   through TEST 6 payload dumps.
 - An exact offline/dry-run CLI path now prints those checked-in setup bytes and
   full 290-byte payloads for the supported live-confirmed `JARGB_V2_1` cases.
+- A formal read-only first-write checklist now exists in
+  `docs/MSI_7E75_FIRST_WRITE_CHECKLIST.md` and via
+  `cargo run -- linux hid first-write-checklist`.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
@@ -100,6 +104,7 @@ cargo run -- linux hid gate
 cargo run -- linux hid dry-run --zone JRGB1 --color ff0000
 cargo run -- linux hid dry-run --zone JARGB_V2_1 --color ff0000
 cargo run -- linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000
+cargo run -- linux hid first-write-checklist
 ```
 
 These commands stay read-only. They do not open HID devices or transmit
@@ -121,6 +126,8 @@ feature reports.
 - continue decoding the passive `0x50`/290 USBPcap payloads offline
 - collect more passive MSI Center traffic for the other zones and restore paths
 - keep adding safer diagnostics and documentation
+- keep the formal first-write checklist as the required gate before any future
+  Phase 4 decision
 - do not add write code yet
 
 ## 10. Latest Commit State
