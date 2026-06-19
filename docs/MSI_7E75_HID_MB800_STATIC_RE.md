@@ -180,6 +180,11 @@ fixture contains live-confirmed `0x90..0x93`/302 traffic. The comparison
 intentionally does not force the builder to match the capture because the full
 payload and many byte meanings are not yet proven.
 
+That same offline-only module now includes a separate local generator/check for
+the live-confirmed `JARGB_V2_1` `0x50`/290 payload prefix variants. It is kept
+separate from the broader static builders so the repo does not silently change
+shared behavior based on partial live-capture evidence.
+
 ## Confirmed Vs Unknown
 
 Confirmed:
@@ -197,6 +202,8 @@ Confirmed:
   static `0x90`/302 path.
 - Live `0x50` captures now confirm steady `0x02`, breath `0x04`, off `0x00`,
   and RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
+- A local offline-only generator/check now exists for those live-confirmed
+  `JARGB_V2_1` `0x50`/290 payload prefixes.
 
 Unknown:
 

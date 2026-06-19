@@ -18,6 +18,8 @@ Implemented:
 - external evidence notes and OpenRGB protocol comparison
 - passive MSI Center USBPcap capture notes for `MB -> JARGB_V2_1`
 - offline `0x50`/290 fixture comparison for the newer USBPcap4 mode captures
+- offline-only local generator/check for live `JARGB_V2_1` `0x50`/290 payload
+  prefixes
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -60,6 +62,8 @@ Explicitly held:
 - 0x90..0x93 are not live-confirmed.
 - Live `0x50` mode observations now include steady `0x02`, breath `0x04`, and
   off `0x00`, with RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
+- A separate offline-only local generator/check now exists for those
+  live-confirmed `JARGB_V2_1` `0x50`/290 payload prefixes.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State

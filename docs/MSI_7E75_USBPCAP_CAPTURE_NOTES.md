@@ -171,6 +171,12 @@ Offline comparison support was added in
 only parses pasted hex fixtures and compares byte slices against the existing
 in-memory report builder. It has no CLI entry point and no device access.
 
+That module now also includes a separate offline-only local generator for the
+live-confirmed `JARGB_V2_1` `0x50`/290 payload prefixes observed in the USBPcap
+captures. It is intentionally separate from the existing broad Gen1/Gen2 report
+builders because the older static builder model does not by itself explain the
+live `JARGB_V2_1` `0x50` path.
+
 The current embedded fixtures use the documented frame starts:
 
 | Frame | Embedded fixture bytes | Store byte metadata | Source form |
@@ -194,6 +200,7 @@ Known matches:
 | Store byte `[289]` | Frame `4781` has `0x00`; frame `7757` has `0x01`, matching the documented Gen1 store-byte offset. |
 | HID payload byte `[1]` | Observed live mode byte: steady `0x02`, breath `0x04`, off `0x00`. |
 | HID payload bytes `[2..4]` | Observed live RGB prefix: red `ff0000`, green `00ff00`, blue `0000ff`. |
+| Offline local generator/check | Builds the observed `JARGB_V2_1` `0x50`/290 payload prefix for steady red/green/blue, breath red, and off with retained red. |
 
 Known differences in the available prefixes:
 

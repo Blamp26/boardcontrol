@@ -93,6 +93,33 @@ impl CapturedReportSummary {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LiveJargbV2_1Preset {
+    SteadyRed,
+    SteadyGreen,
+    SteadyBlue,
+    BreathRed,
+    OffRetainedRed,
+}
+
+impl LiveJargbV2_1Preset {
+    pub const fn mode(self) -> u8 {
+        match self {
+            Self::SteadyRed | Self::SteadyGreen | Self::SteadyBlue => 0x02,
+            Self::BreathRed => 0x04,
+            Self::OffRetainedRed => 0x00,
+        }
+    }
+
+    pub const fn rgb(self) -> [u8; 3] {
+        match self {
+            Self::SteadyRed | Self::BreathRed | Self::OffRetainedRed => [0xFF, 0x00, 0x00],
+            Self::SteadyGreen => [0x00, 0xFF, 0x00],
+            Self::SteadyBlue => [0x00, 0x00, 0xFF],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ByteComparisonStatus {
     Match,
     Differs,
@@ -221,6 +248,24 @@ pub fn compare_0x50_payload_to_gen1_builder(
     Ok(comparisons)
 }
 
+pub fn build_live_confirmed_jargb_v2_1_0x50_payload(
+    preset: LiveJargbV2_1Preset,
+) -> [u8; GEN1_REPORT_LENGTH] {
+    let mut payload = [0_u8; GEN1_REPORT_LENGTH];
+    payload[0] = GEN1_REPORT_ID;
+    payload[1] = preset.mode();
+
+    let [red, green, blue] = preset.rgb();
+    payload[2] = red;
+    payload[3] = green;
+    payload[4] = blue;
+
+    // Clean live apply/save captures observed byte 289 as 0x01. Keep this as
+    // offline evidence metadata only; the full meaning remains unproven.
+    payload[GEN1_REPORT_LENGTH - 1] = 0x01;
+    payload
+}
+
 fn decode_setup(bytes: &[u8]) -> UsbSetupPacket {
     UsbSetupPacket {
         bm_request_type: bytes[0],
@@ -261,13 +306,13 @@ fn describe_gen1_offset(offset: usize) -> String {
 #[cfg(test)]
 mod tests {
     use crate::linux::hid::report::{
-        GEN1_REPORT_LENGTH, Ms7e75Zone, RgbColor, build_zone_static_rgb_report,
+        GEN1_REPORT_ID, GEN1_REPORT_LENGTH, Ms7e75Zone, RgbColor, build_zone_static_rgb_report,
     };
 
     use super::{
-        ByteComparisonStatus, CapturedReportSummary, ReportShape,
-        compare_0x50_payload_to_gen1_builder, contains_report_shape, extract_0x50_payload,
-        parse_hex_fixture,
+        ByteComparisonStatus, CapturedReportSummary, LiveJargbV2_1Preset, ReportShape,
+        build_live_confirmed_jargb_v2_1_0x50_payload, compare_0x50_payload_to_gen1_builder,
+        contains_report_shape, extract_0x50_payload, parse_hex_fixture,
     };
 
     const SETUP_0X50_290: &str = "21 09 50 03 00 00 22 01";
@@ -456,6 +501,56 @@ mod tests {
     }
 
     #[test]
+    fn offline_live_builder_matches_steady_red_fixture_prefix_and_store_metadata() {
+        assert_live_builder_prefix(
+            LiveJargbV2_1Preset::SteadyRed,
+            LIVE_STEADY_RED_PREFIX,
+            0x02,
+            [0xFF, 0x00, 0x00],
+        );
+    }
+
+    #[test]
+    fn offline_live_builder_matches_steady_green_fixture_prefix_and_store_metadata() {
+        assert_live_builder_prefix(
+            LiveJargbV2_1Preset::SteadyGreen,
+            LIVE_STEADY_GREEN_PREFIX,
+            0x02,
+            [0x00, 0xFF, 0x00],
+        );
+    }
+
+    #[test]
+    fn offline_live_builder_matches_steady_blue_fixture_prefix_and_store_metadata() {
+        assert_live_builder_prefix(
+            LiveJargbV2_1Preset::SteadyBlue,
+            LIVE_STEADY_BLUE_PREFIX,
+            0x02,
+            [0x00, 0x00, 0xFF],
+        );
+    }
+
+    #[test]
+    fn offline_live_builder_matches_breath_red_fixture_prefix_and_store_metadata() {
+        assert_live_builder_prefix(
+            LiveJargbV2_1Preset::BreathRed,
+            LIVE_BREATH_RED_PREFIX,
+            0x04,
+            [0xFF, 0x00, 0x00],
+        );
+    }
+
+    #[test]
+    fn offline_live_builder_matches_off_retained_red_fixture_prefix_and_store_metadata() {
+        assert_live_builder_prefix(
+            LiveJargbV2_1Preset::OffRetainedRed,
+            LIVE_OFF_RED_PREFIX,
+            0x00,
+            [0xFF, 0x00, 0x00],
+        );
+    }
+
+    #[test]
     fn steady_red_green_and_blue_live_fixtures_map_to_mode_0x02_and_expected_rgb() {
         assert_eq!(
             decode_mode_preview(LIVE_STEADY_RED_PREFIX),
@@ -606,6 +701,23 @@ mod tests {
             mode: bytes[1],
             rgb: [bytes[2], bytes[3], bytes[4]],
         }
+    }
+
+    fn assert_live_builder_prefix(
+        preset: LiveJargbV2_1Preset,
+        fixture_prefix: &str,
+        expected_mode: u8,
+        expected_rgb: [u8; 3],
+    ) {
+        let payload = build_live_confirmed_jargb_v2_1_0x50_payload(preset);
+        let fixture = parse_hex_fixture(fixture_prefix).unwrap();
+
+        assert_eq!(payload.len(), GEN1_REPORT_LENGTH);
+        assert_eq!(payload[0], GEN1_REPORT_ID);
+        assert_eq!(payload[1], expected_mode);
+        assert_eq!(&payload[2..5], &expected_rgb);
+        assert_eq!(&payload[..fixture.len()], fixture.as_slice());
+        assert_eq!(payload[GEN1_REPORT_LENGTH - 1], 0x01);
     }
 
     fn differing_offsets(comparisons: &[super::ByteComparison]) -> Vec<usize> {
