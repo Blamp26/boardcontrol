@@ -280,6 +280,51 @@ mod tests {
         50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e \
         21 09 50 03 00 00 22 01 \
         50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e";
+    const LIVE_STEADY_RED_PREFIX: &str = "50 02 ff 00 00";
+    const LIVE_STEADY_GREEN_PREFIX: &str = "50 02 00 ff 00";
+    const LIVE_STEADY_BLUE_PREFIX: &str = "50 02 00 00 ff";
+    const LIVE_BREATH_RED_PREFIX: &str = "50 04 ff 00 00";
+    const LIVE_OFF_RED_PREFIX: &str = "50 00 ff 00 00";
+
+    struct LiveModeFixture {
+        label: &'static str,
+        bytes: &'static str,
+        store_byte: u8,
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct LiveModePreview {
+        mode: u8,
+        rgb: [u8; 3],
+    }
+
+    const LIVE_MODE_FIXTURES: [LiveModeFixture; 5] = [
+        LiveModeFixture {
+            label: "steady_red",
+            bytes: "21 09 50 03 00 00 22 01 50 02 ff 00 00",
+            store_byte: 0x01,
+        },
+        LiveModeFixture {
+            label: "steady_green",
+            bytes: "21 09 50 03 00 00 22 01 50 02 00 ff 00",
+            store_byte: 0x01,
+        },
+        LiveModeFixture {
+            label: "steady_blue",
+            bytes: "21 09 50 03 00 00 22 01 50 02 00 00 ff",
+            store_byte: 0x01,
+        },
+        LiveModeFixture {
+            label: "breath_red",
+            bytes: "21 09 50 03 00 00 22 01 50 04 ff 00 00",
+            store_byte: 0x01,
+        },
+        LiveModeFixture {
+            label: "off_red_rgb_retained",
+            bytes: "21 09 50 03 00 00 22 01 50 00 ff 00 00",
+            store_byte: 0x01,
+        },
+    ];
 
     #[test]
     fn setup_prefixed_fixture_extracts_payload_after_usb_setup() {
@@ -385,8 +430,82 @@ mod tests {
     }
 
     #[test]
+    fn live_mode_fixtures_all_decode_as_0x50_290_reports() {
+        for fixture in LIVE_MODE_FIXTURES {
+            let extracted =
+                extract_0x50_payload(&parse_hex_fixture(fixture.bytes).unwrap()).unwrap();
+            let setup = extracted
+                .setup
+                .unwrap_or_else(|| panic!("fixture {} missing USB setup", fixture.label));
+
+            assert_eq!(
+                setup.report_shape(),
+                ReportShape {
+                    report_id: 0x50,
+                    report_length: 290
+                }
+            );
+            assert!(
+                setup.is_msi_center_0x50_setup(),
+                "fixture {}",
+                fixture.label
+            );
+            assert_eq!(extracted.payload[0], 0x50, "fixture {}", fixture.label);
+            assert_eq!(fixture.store_byte, 0x01, "fixture {}", fixture.label);
+        }
+    }
+
+    #[test]
+    fn steady_red_green_and_blue_live_fixtures_map_to_mode_0x02_and_expected_rgb() {
+        assert_eq!(
+            decode_mode_preview(LIVE_STEADY_RED_PREFIX),
+            LiveModePreview {
+                mode: 0x02,
+                rgb: [0xFF, 0x00, 0x00],
+            }
+        );
+        assert_eq!(
+            decode_mode_preview(LIVE_STEADY_GREEN_PREFIX),
+            LiveModePreview {
+                mode: 0x02,
+                rgb: [0x00, 0xFF, 0x00],
+            }
+        );
+        assert_eq!(
+            decode_mode_preview(LIVE_STEADY_BLUE_PREFIX),
+            LiveModePreview {
+                mode: 0x02,
+                rgb: [0x00, 0x00, 0xFF],
+            }
+        );
+    }
+
+    #[test]
+    fn breath_red_live_fixture_maps_to_mode_0x04_and_ff0000() {
+        assert_eq!(
+            decode_mode_preview(LIVE_BREATH_RED_PREFIX),
+            LiveModePreview {
+                mode: 0x04,
+                rgb: [0xFF, 0x00, 0x00],
+            }
+        );
+    }
+
+    #[test]
+    fn off_live_fixture_maps_to_mode_0x00_without_requiring_black_rgb() {
+        let preview = decode_mode_preview(LIVE_OFF_RED_PREFIX);
+
+        assert_eq!(preview.mode, 0x00);
+        assert_eq!(preview.rgb, [0xFF, 0x00, 0x00]);
+        assert_ne!(preview.rgb, [0x00, 0x00, 0x00]);
+    }
+
+    #[test]
     fn pcap_derived_fixture_stream_contains_no_static_gen2_or_advanced_shapes() {
-        let bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+        let mut bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+        for fixture in LIVE_MODE_FIXTURES {
+            bytes.extend(parse_hex_fixture(fixture.bytes).unwrap());
+        }
         let absent_shapes = [
             ReportShape {
                 report_id: 0x90,
@@ -459,7 +578,10 @@ mod tests {
 
     #[test]
     fn jargb_v2_1_to_0x90_is_not_live_confirmed_by_capture_fixtures() {
-        let bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+        let mut bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
+        for fixture in LIVE_MODE_FIXTURES {
+            bytes.extend(parse_hex_fixture(fixture.bytes).unwrap());
+        }
 
         assert!(contains_report_shape(
             &bytes,
@@ -475,6 +597,15 @@ mod tests {
                 report_length: 302
             }
         ));
+    }
+
+    fn decode_mode_preview(prefix: &str) -> LiveModePreview {
+        let bytes = parse_hex_fixture(prefix).unwrap();
+
+        LiveModePreview {
+            mode: bytes[1],
+            rgb: [bytes[2], bytes[3], bytes[4]],
+        }
     }
 
     fn differing_offsets(comparisons: &[super::ByteComparison]) -> Vec<usize> {

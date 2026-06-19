@@ -17,6 +17,7 @@ Implemented:
 - Phase 3 dry-run report preview
 - external evidence notes and OpenRGB protocol comparison
 - passive MSI Center USBPcap capture notes for `MB -> JARGB_V2_1`
+- offline `0x50`/290 fixture comparison for the newer USBPcap4 mode captures
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -29,6 +30,8 @@ Validated:
 - no writes were performed
 - passive MSI Center traffic for `MB -> JARGB_V2_1` used `0x50`/290, not
   `0x90`/302
+- newer USBPcap4 captures confirmed `0x50`/290 steady, breath, and off mode
+  bytes for `JARGB_V2_1`
 - analyzed passive captures did not contain `0x90..0x93`/302, `0x51`/727, or
   `0xB0`/761 traffic
 
@@ -55,6 +58,8 @@ Explicitly held:
   `JARGB_V2_1`, `JARGB_V2_2`, `JARGB_V2_3`, and `EZ Conn`.
 - The live MSI Center UI path observed for JARGB_V2_1 is 0x50/290.
 - 0x90..0x93 are not live-confirmed.
+- Live `0x50` mode observations now include steady `0x02`, breath `0x04`, and
+  off `0x00`, with RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
@@ -93,16 +98,18 @@ feature reports.
 - no approved write or recovery path
 - OpenRGB provides only a near match, not an exact MS-7E75 MB800 confirmation
 - current passive MSI Center capture observed `0x50`/290 for `MB -> JARGB_V2_1`
+- byte `[289]` has been observed as both `0x00` and `0x01`, so it remains only
+  observed metadata
 - no live `0x51`/727 or `0xB0`/761 traffic was observed in the analyzed
   captures
 
 ## 9. Best Next Steps
 
-- decode the passive `0x50`/290 USBPcap payloads offline
+- continue decoding the passive `0x50`/290 USBPcap payloads offline
 - collect more passive MSI Center traffic for the other zones and restore paths
 - keep adding safer diagnostics and documentation
 - do not add write code yet
 
 ## 10. Latest Commit State
 
-- latest local commit should document the MS-7E75 USBPcap capture evidence
+- latest local commit should document the MS-7E75 live mode capture evidence

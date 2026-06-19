@@ -7,6 +7,9 @@ Status: documentation only. This document approves no code and no writes.
 A passive Windows USBPcap/Wireshark capture was taken while MSI Center controlled
 the real MSI MS-7E75 / B850 GAMING PLUS WIFI PZ board.
 
+USBPcap evidence was taken from USBPcap4, device `4.4.0`, packet type
+`HCI_USB 326 Sent`.
+
 Two passive captures were analyzed offline:
 
 - `msi_7e75_0x50_capture.pcapng`
@@ -45,13 +48,27 @@ No live MSI Center traffic in the analyzed captures contained:
 
 No `0x0390` / 302-byte report was observed for this MSI Center UI action.
 
+Confirmed live tests for `MB -> JARGB_V2_1`:
+
+- steady / `R108 G225 B40` / LED changed yes
+- steady / `R255 G0 B0` / LED changed yes
+- steady / `R0 G255 B0` / LED changed yes
+- steady / `R0 G0 B255` / LED changed yes
+- breath / `R255 G0 B0` / LED changed yes
+- off / LED changed yes
+
 Observed report starts and store bytes from
-`msi_7e75_jarbg_v2_1_capture.pcapng`:
+`msi_7e75_jarbg_v2_1_capture.pcapng` and the newer USBPcap4 tests:
 
 | Frame | Report start | Store byte `[289]` | Notes |
 | --- | --- | --- | --- |
 | `4781` | `50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e ...` | `0x00` | Feature report ID `0x50`, 290-byte transfer. |
 | `7757` | `50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e ...` | `0x01` | Feature report ID `0x50`, 290-byte transfer. |
+| USBPcap4 steady red | `50 02 ff 00 00 ...` | `0x01` | Mode `0x02`, RGB begins `ff 00 00`. |
+| USBPcap4 steady green | `50 02 00 ff 00 ...` | `0x01` | Mode `0x02`, RGB begins `00 ff 00`. |
+| USBPcap4 steady blue | `50 02 00 00 ff ...` | `0x01` | Mode `0x02`, RGB begins `00 00 ff`. |
+| USBPcap4 breath red | `50 04 ff 00 00 ...` | `0x01` | Mode `0x04`, RGB begins `ff 00 00`. |
+| USBPcap4 off | `50 00 ff 00 00 ...` | `0x01` | Mode `0x00`; RGB remained red, so off is mode-driven. |
 
 ## USB Setup Byte Decoding
 
@@ -78,6 +95,28 @@ Decoded:
 | USBPcap frame `4781` | `MB -> JARGB_V2_1` | `0x50` | Feature | `290` | Live MSI Center traffic observed. |
 | USBPcap frame `7757` | `MB -> JARGB_V2_1` | `0x50` | Feature | `290` | Live MSI Center traffic observed. |
 | Prior static/decompiled notes | `JARGB_V2_1` candidate path | `0x90` | Feature | `302` | Static/decompiled evidence only; not observed in this capture. |
+
+## Confirmed Payload Meanings
+
+Confirmed from the newer USBPcap4 captures:
+
+- `payload[0] = 0x50`
+- `payload[1] = mode`
+- steady mode observed as `0x02`
+- breath mode observed as `0x04`
+- off mode observed as `0x00`
+- `payload[2..5]` begins with the first RGB triplet for steady and breath
+- red begins `ff 00 00`
+- green begins `00 ff 00`
+- blue begins `00 00 ff`
+- in the off capture, RGB remained `ff 00 00` while mode changed to `0x00`
+- `payload[289]` was `0x01` for the clean red/green/blue/breath/off tests
+
+Important limit:
+
+- an earlier random-color capture had `payload[289] = 0x00`
+- therefore byte `[289]` should be documented only as observed store/apply
+  metadata, not as a fully understood flag yet
 
 ## Key Conclusion
 
@@ -153,6 +192,8 @@ Known matches:
 | USB setup `wLength` | `0x0122`, 290 bytes, matching `GEN1_REPORT_LENGTH`. |
 | HID payload byte `[0]` | `0x50`, matching the Gen1 report builder report ID. |
 | Store byte `[289]` | Frame `4781` has `0x00`; frame `7757` has `0x01`, matching the documented Gen1 store-byte offset. |
+| HID payload byte `[1]` | Observed live mode byte: steady `0x02`, breath `0x04`, off `0x00`. |
+| HID payload bytes `[2..4]` | Observed live RGB prefix: red `ff0000`, green `00ff00`, blue `0000ff`. |
 
 Known differences in the available prefixes:
 
@@ -165,8 +206,9 @@ Unknowns:
 
 - The embedded byte strings still include only the first payload bytes, not all
   290 payload bytes.
-- Store byte `[289]` is represented as pcap-derived metadata in tests and docs;
-  the middle bytes between the prefix and store byte are not embedded here.
+- Store byte `[289]` is represented as observed metadata in tests and docs; the
+  middle bytes between the prefix and store byte are not embedded here, and the
+  exact meaning of byte `[289]` is still not proven.
 - The visible differences may represent MSI Center's full-board `0x50` state,
   selected mode, colors, brightness/options, persistence, or unrelated populated
   areas. The current evidence is not enough to assign those meanings safely.

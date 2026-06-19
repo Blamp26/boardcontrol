@@ -152,6 +152,20 @@ evidence. A later passive USBPcap capture of MSI Center applying
 `MB -> JARGB_V2_1` observed Feature `SET_REPORT` `0x50` with length `290`, and
 did not observe `0x0390` / 302-byte traffic for that UI action.
 
+Newer USBPcap4 captures from device `4.4.0`, packet type `HCI_USB 326 Sent`,
+further confirm that the live path is still `0x50`/290 and that:
+
+- `payload[0] = 0x50`
+- `payload[1]` is the observed mode byte
+- steady `= 0x02`
+- breath `= 0x04`
+- off `= 0x00`
+- `payload[2..4]` begins with RGB data for steady/breath
+- off does not require RGB `000000`; one live off capture retained `ff 00 00`
+- `payload[289]` was `0x01` in the clean red/green/blue/breath/off tests, but
+  older capture evidence also showed `0x00`, so byte `[289]` remains observed
+  metadata only
+
 The two analyzed passive captures did not contain live MSI Center traffic for
 `0x90`/302, `0x91`/302, `0x92`/302, `0x93`/302, `0x51`/727, or `0xB0`/761.
 Those report families remain static/decompiled evidence only.
@@ -159,11 +173,12 @@ Those report families remain static/decompiled evidence only.
 Offline builder comparison support in
 [`src/linux/hid/capture_compare.rs`](../src/linux/hid/capture_compare.rs)
 parses pasted capture hex fixtures only. Current tests confirm that the USB
-setup length, payload report ID, and pcap-derived store-byte metadata match the
-Gen1 builder's `0x50`/290 shape. The available frame prefixes differ in area-0
-mode/color and option/cycle-like bytes from the current single-zone `JRGB1`
-builder fixture. The comparison intentionally does not force the builder to
-match the capture because the full payload and byte meanings are not yet proven.
+setup length, payload report ID, and the compact live mode fixtures all decode
+as `0x50`/290. They also confirm live steady red/green/blue, breath red, and
+off-with-red-retained mode/RGB observations, while still proving that no
+fixture contains live-confirmed `0x90..0x93`/302 traffic. The comparison
+intentionally does not force the builder to match the capture because the full
+payload and many byte meanings are not yet proven.
 
 ## Confirmed Vs Unknown
 
@@ -178,6 +193,10 @@ Confirmed:
 - MB800 common device open uses VID `0x0DB0`, PID `0x0076`, MI `0`, COL `0`, device number `1`.
 - `CheckConnectedDevice` and `Init` derive/validate a board-like PID from the first four hex characters of the HID serial string.
 - Gen1 and Gen2 feature report lengths and byte layouts are statically visible.
+- The live MSI Center path observed for `JARGB_V2_1` is `0x50`/290, not the
+  static `0x90`/302 path.
+- Live `0x50` captures now confirm steady `0x02`, breath `0x04`, off `0x00`,
+  and RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 
 Unknown:
 
@@ -186,6 +205,8 @@ Unknown:
 - The actual HID device path on this host; no devices were enumerated or opened.
 - Whether Linux `hidraw` will expose the same report lengths and behavior without MSI's native wrapper.
 - Whether the MS-7E75 controller accepts all documented report forms safely.
+- Whether the rest of the live `0x50`/290 payload maps cleanly to the static
+  Gen1 area-record interpretation for the `JARGB_V2_1` UI path.
 - Whether additional initialization, locking, or service coordination is required before any future non-Windows implementation.
 - Whether MBAPI's separate static `7E75` board-list hit is involved before, beside, or independently of this MB800 HID path.
 
@@ -233,6 +254,8 @@ Unknowns that remain unchanged:
 - Linux `hidraw` dispatch behavior, report descriptor behavior, and whether a future Linux transport must include or omit the report ID byte remain untested and unknown.
 - The current builder is intentionally in-memory only. It does not open HID devices, call `SetFeature`/`GetFeature`, or touch `/dev/hidraw*`.
 - Phase 4 remains on hold; this audit does not approve writes or write-once behavior.
+- The newer live `0x50` evidence does not weaken the safety tripwire and does
+  not approve Linux HID writes.
 
 ## Real-Machine Validation Result
 

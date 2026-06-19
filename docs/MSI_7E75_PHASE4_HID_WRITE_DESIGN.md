@@ -9,6 +9,10 @@ live MSI Center UI path observed for JARGB_V2_1 is 0x50/290. 0x90..0x93 are
 not live-confirmed. Do not use 0x90 as the first-write target. This evidence
 does not approve Linux HID writes.
 
+Newer USBPcap4 captures further confirm live `0x50` / `290` mode evidence for
+steady, breath, and off on `JARGB_V2_1`, but they still do not approve Linux
+HID writes and do not unblock Phase 4.
+
 ## Current decision: Phase 4 hold
 
 Phase 4 is on hold. Do not implement HID writes yet. Do not run write-once. Do
@@ -37,7 +41,10 @@ External open-source evidence is summarized in
 corroborates the common Mystic Light HID VID/PID but not the exact
 MS-7E75 / MB800 `0x90..0x93` report path. Passive USBPcap evidence now shows
 MSI Center using `0x50`/290 for `MB -> JARGB_V2_1`, not `0x90`/302. The
-analyzed captures also did not contain `0x51`/727 or `0xB0`/761 traffic.
+newer captures also confirm mode byte observations for steady `0x02`, breath
+`0x04`, and off `0x00`, with RGB prefixes beginning `ff0000`, `00ff00`, and
+`0000ff`. The analyzed captures still did not contain `0x90..0x93`/302,
+`0x51`/727, or `0xB0`/761 traffic.
 
 ## Current Evidence
 
@@ -75,6 +82,13 @@ Linux lighting support yet. Keep only inventory, gate, and dry-run paths.
 Required unblocker: stronger board-family-exact live evidence for the actual MSI
 Center report family, length, initialization flow, zone mapping, and recovery
 behavior, or a separately accepted risk decision.
+
+Current conclusion:
+
+- Live MSI Center path for `JARGB_V2_1` is `0x50`/290.
+- `0x90..0x93` remain static/decompiled only, not live-confirmed.
+- Phase 4 remains on hold.
+- This still does not approve Linux HID writes.
 
 ## Prerequisites Before Implementation
 
@@ -178,7 +192,8 @@ There is currently no allowed first write scope.
 
 The previous `JARGB_V2_1` / `0x90` / `302` candidate is blocked by the passive
 USBPcap result. The live MSI Center UI path observed for JARGB_V2_1 is
-0x50/290, and that observation still does not approve Linux HID writes.
+0x50/290, and the newer mode/RGB evidence still does not approve Linux HID
+writes.
 
 Historical candidate, not approved:
 

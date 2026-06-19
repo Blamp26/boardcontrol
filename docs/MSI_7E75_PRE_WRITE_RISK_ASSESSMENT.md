@@ -38,6 +38,9 @@ Why:
   but does not confirm the MS-7E75 / MB800 `0x90..0x93` write reports
 - passive MSI Center USBPcap evidence for `MB -> JARGB_V2_1` observed
   `0x50`/290, not `0x90`/302
+- newer USBPcap4 captures also confirm steady `0x02`, breath `0x04`, and off
+  `0x00` in the live `0x50`/290 payload, with RGB prefixes beginning
+  `ff0000`, `00ff00`, and `0000ff`
 
 ## What Is Known
 
@@ -56,6 +59,8 @@ Why:
 - The only live MSI Center write path observed so far is `0x50`/290.
 - `0x90..0x93` remain static/decompiled evidence only until live traffic
   confirms them.
+- Live off behavior did not require RGB `000000`; one off capture retained
+  `ff0000` while mode changed to `0x00`.
 
 ## What Is Still Unknown
 
@@ -111,7 +116,7 @@ Passive MSI Center USBPcap evidence is recorded in
 [MSI_7E75_USBPCAP_CAPTURE_NOTES.md](MSI_7E75_USBPCAP_CAPTURE_NOTES.md).
 These notes confirm the common VID/PID family and partial `0x50` / `290`
 evidence, but do not lower first-write risk enough to change the read-only
-recommendation.
+recommendation. They improve offline decode confidence, not write safety.
 
 Collect the following external evidence before any later Phase 4 review:
 
@@ -204,7 +209,9 @@ first HID `SetFeature` report.
 The OpenRGB protocol comparison and the MSI Center USBPcap capture keep this
 recommendation unchanged. The closest OpenRGB JARGB/JAF implementation does not
 confirm the MS-7E75 MB800 `0x90..0x93` / `302` report path, and the live MSI
-Center `MB -> JARGB_V2_1` path observed so far is `0x50`/290.
+Center `MB -> JARGB_V2_1` path observed so far is `0x50`/290. Newer mode/RGB
+evidence still leaves `0x90..0x93` static-only and does not approve Linux HID
+writes.
 
 Current decision: Phase 4 hold. Keep only inventory, gate, and dry-run paths.
 Do not add general Linux lighting support yet. Do not use `JARGB_V2_1 -> 0x90`
