@@ -26,6 +26,8 @@ Implemented:
   `0x50`/290 payloads
 - formal first-write checklist and read-only decision-gate command
 - design-only first-write implementation plan for a future one-packet path
+- final pre-write audit report confirming the current MS-7E75 HID path remains
+  read-only/offline-only
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -79,6 +81,9 @@ Explicitly held:
   `cargo run -- linux hid first-write-checklist`.
 - A separate design-only first-write implementation plan now exists in
   `docs/MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md`.
+- A final pre-write audit report now exists in
+  `docs/MSI_7E75_PRE_WRITE_AUDIT.md`; it found no blocker and does not approve
+  Linux HID writes.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
@@ -133,6 +138,7 @@ feature reports.
   Phase 4 decision
 - keep the new first-write implementation plan design-only until separate
   explicit approval exists
+- keep the pre-write audit as a status snapshot, not as write approval
 - do not add write code yet
 
 ## 10. Latest Commit State
