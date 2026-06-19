@@ -13,6 +13,7 @@ Current conclusion:
 - exact offline/dry-run output is approved
 - hardware writes are still not approved
 - Phase 4 remains on hold until a separate explicit user risk decision
+- the future first-write path is design-only so far
 
 ## 2. Already Satisfied Evidence
 
@@ -52,6 +53,8 @@ Current conclusion:
   approve Linux HID writes.
 - No HID write implementation, `write-once` path, `SetFeature`/`GetFeature`
   path, or HID device-open path is approved by this checklist.
+- The new implementation plan is documentation only and does not change
+  `first_write_ready = no`.
 
 ## 5. Read-Only Checklist Command
 
@@ -71,3 +74,12 @@ Expected status lines:
 - `first_write_ready = no`
 
 This command performs no hardware access.
+
+## 6. Related Design-Only Plan
+
+The future one-packet first-write shape is documented separately in:
+
+- [MSI MS-7E75 First-Write Implementation Plan](MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md)
+
+That plan is still design-only. It does not implement a write path and does not
+move Phase 4 off HOLD.

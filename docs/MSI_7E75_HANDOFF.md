@@ -25,6 +25,7 @@ Implemented:
 - exact offline/dry-run CLI output for the checked-in live `JARGB_V2_1`
   `0x50`/290 payloads
 - formal first-write checklist and read-only decision-gate command
+- design-only first-write implementation plan for a future one-packet path
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -76,6 +77,8 @@ Explicitly held:
 - A formal read-only first-write checklist now exists in
   `docs/MSI_7E75_FIRST_WRITE_CHECKLIST.md` and via
   `cargo run -- linux hid first-write-checklist`.
+- A separate design-only first-write implementation plan now exists in
+  `docs/MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md`.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
@@ -128,8 +131,11 @@ feature reports.
 - keep adding safer diagnostics and documentation
 - keep the formal first-write checklist as the required gate before any future
   Phase 4 decision
+- keep the new first-write implementation plan design-only until separate
+  explicit approval exists
 - do not add write code yet
 
 ## 10. Latest Commit State
 
-- latest local commit should document the MS-7E75 live mode capture evidence
+- latest local commit should keep the first-write path in documentation only
+  status

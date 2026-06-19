@@ -23,6 +23,7 @@ The current codebase is a safety-first research MVP. It models known register-le
 - [MSI MS-7E75 Research Plan](docs/MSI_7E75_RESEARCH_PLAN.md) - staged safety plan before any hardware probing.
 - [MSI MS-7E75 Current-State Handoff](docs/MSI_7E75_HANDOFF.md) - concise handoff packet covering current status, evidence gaps, and the Phase 4 hold.
 - [MSI MS-7E75 First-Write Checklist](docs/MSI_7E75_FIRST_WRITE_CHECKLIST.md) - formal read-only decision gate separating satisfied evidence, remaining requirements, and the explicit user risk decision still required before any write.
+- [MSI MS-7E75 First-Write Implementation Plan](docs/MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md) - design-only plan for a future one-packet `0x50`/290 first-write path; implements nothing and keeps Phase 4 on HOLD.
 - [MSI MS-7E75 Static Reverse Engineering Notes](docs/MSI_7E75_STATIC_RE.md) - consolidated static MSI Center / Mystic Light module findings and relevance map.
 - [MSI MS-7E75 Profile Selection Static Notes](docs/MSI_7E75_PROFILE_SELECTION_STATIC_RE.md) - static search for MSI Center / Mystic Light board-profile, zone, and route-selection evidence.
 - [MSI MS-7E75 LEDKeeper2 Static Notes](docs/MSI_7E75_LEDKEEPER_STATIC_RE.md) - static LEDKeeper2.exe metadata, string, resource, profile/zone, and dispatch-candidate evidence.
@@ -80,6 +81,11 @@ prints the current Phase 4 HOLD status, the evidence already satisfied, the
 requirements still outstanding before any future first write, and the explicit
 user risk decision that would still be required.
 
+The future first-write path is still documentation-only. The implementation
+shape is described in
+[MSI MS-7E75 First-Write Implementation Plan](docs/MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md),
+but no write command is implemented and `first_write_ready` remains `no`.
+
 Expected wording:
 
 - `READ ONLY` or `DRY RUN ONLY`
@@ -108,6 +114,7 @@ Helpful references:
 
 - [Current-State Handoff](docs/MSI_7E75_HANDOFF.md)
 - [First-Write Checklist](docs/MSI_7E75_FIRST_WRITE_CHECKLIST.md)
+- [First-Write Implementation Plan](docs/MSI_7E75_FIRST_WRITE_IMPLEMENTATION_PLAN.md)
 - [Validation Checklist](docs/MSI_7E75_LINUX_HID_VALIDATION_CHECKLIST.md)
 - [Pre-Write Risk Assessment](docs/MSI_7E75_PRE_WRITE_RISK_ASSESSMENT.md)
 
