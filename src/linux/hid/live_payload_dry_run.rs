@@ -254,6 +254,26 @@ mod tests {
     }
 
     #[test]
+    fn exact_live_payload_dry_run_prints_every_16_byte_row_without_suppression() {
+        let color = super::super::dry_run::parse_rgb_hex("ff0000").unwrap();
+        let result =
+            build_exact_live_payload_dry_run(Ms7e75Zone::JargbV2_1, LivePayloadMode::Steady, color)
+                .unwrap();
+        let report = format_exact_live_payload_dry_run_report(&result);
+
+        for offset in [
+            "0000:", "0010:", "0020:", "0030:", "0040:", "0050:", "0060:", "0070:", "0080:",
+            "0090:", "00A0:", "00B0:", "00C0:", "00D0:", "00E0:", "00F0:", "0100:", "0110:",
+            "0120:",
+        ] {
+            assert!(
+                report.contains(offset),
+                "exact live payload dump is missing row offset {offset}"
+            );
+        }
+    }
+
+    #[test]
     fn unsupported_zone_is_rejected_without_fallback() {
         let error = build_exact_live_payload_dry_run(
             Ms7e75Zone::JargbV2_2,
