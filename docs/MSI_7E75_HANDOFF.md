@@ -19,9 +19,9 @@ Implemented:
 - passive MSI Center USBPcap capture notes for `MB -> JARGB_V2_1`
 - offline `0x50`/290 fixture comparison for the newer USBPcap4 mode captures
 - offline-only local generator/check for live `JARGB_V2_1` `0x50`/290 payload
-  prefixes
-- byte-for-byte comparison scaffolding for future full 290-byte checked-in
-  payload dumps
+  payloads
+- full TEST 2 through TEST 6 USBPcap fixtures with byte-for-byte offline
+  equality checks
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -65,9 +65,9 @@ Explicitly held:
 - Live `0x50` mode observations now include steady `0x02`, breath `0x04`, and
   off `0x00`, with RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 - A separate offline-only local generator/check now exists for those
-  live-confirmed `JARGB_V2_1` `0x50`/290 payload prefixes.
-- Full local byte-for-byte equality is still not proven because the full
-  290-byte dumps are not checked into this repo yet.
+  live-confirmed `JARGB_V2_1` `0x50`/290 payloads.
+- Full local byte-for-byte equality now passes for the checked-in TEST 2
+  through TEST 6 payload dumps.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State

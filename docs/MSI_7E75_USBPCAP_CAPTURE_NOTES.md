@@ -172,16 +172,20 @@ only parses pasted hex fixtures and compares byte slices against the existing
 in-memory report builder. It has no CLI entry point and no device access.
 
 That module now also includes a separate offline-only local generator for the
-live-confirmed `JARGB_V2_1` `0x50`/290 payload prefixes observed in the USBPcap
+live-confirmed `JARGB_V2_1` `0x50`/290 payloads observed in the USBPcap
 captures. It is intentionally separate from the existing broad Gen1/Gen2 report
 builders because the older static builder model does not by itself explain the
 live `JARGB_V2_1` `0x50` path.
 
-It also now includes byte-for-byte comparison scaffolding and a first-difference
-helper for the day when the full 290-byte MSI Center payload dumps are checked
-into the repo. As of this update, the checked-in MSI Center fixtures are still
-prefix-only plus observed byte `[289]` metadata, so the repo does not yet prove
-full 290-byte equality against the live captures.
+The checked-in fixtures now include the full setup+payload USBPcap dumps for
+TEST 2 through TEST 6, and the isolated offline live builder matches the
+extracted 290-byte HID payloads byte-for-byte for:
+
+- steady red
+- steady green
+- steady blue
+- breath red
+- off with retained red
 
 The current embedded fixtures use the documented frame starts:
 
@@ -206,8 +210,8 @@ Known matches:
 | Store byte `[289]` | Frame `4781` has `0x00`; frame `7757` has `0x01`, matching the documented Gen1 store-byte offset. |
 | HID payload byte `[1]` | Observed live mode byte: steady `0x02`, breath `0x04`, off `0x00`. |
 | HID payload bytes `[2..4]` | Observed live RGB prefix: red `ff0000`, green `00ff00`, blue `0000ff`. |
-| Offline local generator/check | Builds the observed `JARGB_V2_1` `0x50`/290 payload prefix for steady red/green/blue, breath red, and off with retained red. |
-| Full byte-for-byte repo status | Not yet proven locally because the checked-in fixtures are still prefixes rather than complete 290-byte payload dumps. |
+| Offline local generator/check | Builds the observed `JARGB_V2_1` `0x50`/290 payload for steady red/green/blue, breath red, and off with retained red. |
+| Full byte-for-byte repo status | Passes locally for the checked-in TEST 2 through TEST 6 full dumps after extracting the HID payload after the setup bytes. |
 
 Known differences in the available prefixes:
 
@@ -218,14 +222,9 @@ Known differences in the available prefixes:
 
 Unknowns:
 
-- The embedded byte strings still include only the first payload bytes, not all
-  290 payload bytes.
 - Store byte `[289]` is represented as observed metadata in tests and docs; the
-  middle bytes between the prefix and store byte are not embedded here, and the
-  exact meaning of byte `[289]` is still not proven.
-- Because the full 290-byte MSI Center dumps are not checked into this repo yet,
-  full byte-for-byte equality between the offline builder and the live captures
-  is not yet proven locally.
+  exact meaning of byte `[289]` is still not fully proven even though the full
+  checked-in payload equality now passes.
 - The visible differences may represent MSI Center's full-board `0x50` state,
   selected mode, colors, brightness/options, persistence, or unrelated populated
   areas. The current evidence is not enough to assign those meanings safely.
@@ -242,8 +241,8 @@ This evidence does not approve Linux HID writes, HID device opens, `SetFeature`,
 `GetFeature`, `write-once`, `/dev/hidraw*`, `/dev/port`, SMBus, or Super I/O
 access.
 
-Full offline equality, once later proven with checked-in full dumps, would
-still not by itself approve Linux HID writes.
+Full offline equality against the checked-in dumps still does not by itself
+approve Linux HID writes.
 
 ## Next Safe Analysis Steps
 

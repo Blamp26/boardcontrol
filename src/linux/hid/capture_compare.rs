@@ -175,6 +175,23 @@ pub fn parse_hex_fixture(input: &str) -> Result<Vec<u8>, CaptureCompareError> {
     Ok(bytes)
 }
 
+pub fn parse_usbpcap_hexdump_fixture(input: &str) -> Result<Vec<u8>, CaptureCompareError> {
+    let mut normalized = Vec::new();
+
+    for line in input.lines() {
+        let mut parts = line.split_whitespace();
+        if let Some(first) = parts.next() {
+            let is_offset = first.len() == 4 && first.chars().all(|ch| ch.is_ascii_hexdigit());
+            if !is_offset {
+                normalized.push(first);
+            }
+        }
+        normalized.extend(parts);
+    }
+
+    parse_hex_fixture(&normalized.join(" "))
+}
+
 pub fn extract_0x50_payload(bytes: &[u8]) -> Result<ExtractedHidPayload, CaptureCompareError> {
     if bytes.is_empty() {
         return Err(CaptureCompareError::EmptyInput);
@@ -268,16 +285,90 @@ pub fn build_live_confirmed_jargb_v2_1_0x50_payload(
     preset: LiveJargbV2_1Preset,
 ) -> [u8; GEN1_REPORT_LENGTH] {
     let mut payload = [0_u8; GEN1_REPORT_LENGTH];
+    let mode = preset.mode();
     payload[0] = GEN1_REPORT_ID;
-    payload[1] = preset.mode();
+    payload[1] = mode;
+    let primary = preset.rgb();
 
-    let [red, green, blue] = preset.rgb();
-    payload[2] = red;
-    payload[3] = green;
-    payload[4] = blue;
+    write_live_record(
+        &mut payload,
+        0,
+        mode,
+        [
+            primary,
+            [0x00, 0xFF, 0x00],
+            [0x00, 0x00, 0xFF],
+            [0xFF, 0xFF, 0xFF],
+        ],
+        0x00,
+        0x35,
+        0x1E,
+    );
 
-    // Clean live apply/save captures observed byte 289 as 0x01. Keep this as
-    // offline evidence metadata only; the full meaning remains unproven.
+    for record_index in 1..=3 {
+        write_live_record(
+            &mut payload,
+            record_index,
+            0x01,
+            [
+                primary,
+                [0x00, 0xFF, 0x00],
+                [0x00, 0x00, 0xFF],
+                [0xFF, 0xFF, 0xFF],
+            ],
+            0x03,
+            0x94,
+            0x1E,
+        );
+    }
+
+    for record_index in [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16] {
+        write_live_record(
+            &mut payload,
+            record_index,
+            0x02,
+            [
+                [0xFF, 0x00, 0x00],
+                [0xFF, 0x00, 0x00],
+                [0xFF, 0x00, 0x00],
+                [0xFF, 0x00, 0x00],
+            ],
+            0x00,
+            0xB5,
+            0x1E,
+        );
+    }
+
+    write_live_record(
+        &mut payload,
+        9,
+        0x01,
+        [
+            [0x00, 0x00, 0x00],
+            [0x00, 0x00, 0x00],
+            [0x00, 0x00, 0x00],
+            [0x00, 0x00, 0x00],
+        ],
+        0x03,
+        0x94,
+        0xFF,
+    );
+
+    write_live_record(
+        &mut payload,
+        17,
+        0x02,
+        [
+            [0xFF, 0xFF, 0xFF],
+            [0x00, 0xFF, 0x00],
+            [0x00, 0x00, 0xFF],
+            [0xFF, 0xFF, 0xFF],
+        ],
+        0x00,
+        0xB5,
+        0xFF,
+    );
+
     payload[GEN1_REPORT_LENGTH - 1] = 0x01;
     payload
 }
@@ -319,6 +410,28 @@ fn describe_gen1_offset(offset: usize) -> String {
     format!("Gen1 area {area} {field_name}")
 }
 
+fn write_live_record(
+    payload: &mut [u8; GEN1_REPORT_LENGTH],
+    record_index: usize,
+    mode: u8,
+    colors: [[u8; 3]; 4],
+    option_1: u8,
+    option_2: u8,
+    cycle: u8,
+) {
+    let base = 1 + record_index * 16;
+    payload[base] = mode;
+    for (color_index, [red, green, blue]) in colors.into_iter().enumerate() {
+        let offset = base + 1 + color_index * 3;
+        payload[offset] = red;
+        payload[offset + 1] = green;
+        payload[offset + 2] = blue;
+    }
+    payload[base + 13] = option_1;
+    payload[base + 14] = option_2;
+    payload[base + 15] = cycle;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::linux::hid::report::{
@@ -329,6 +442,7 @@ mod tests {
         ByteComparisonStatus, CapturedReportSummary, LiveJargbV2_1Preset, ReportShape,
         build_live_confirmed_jargb_v2_1_0x50_payload, compare_0x50_payload_to_gen1_builder,
         contains_report_shape, extract_0x50_payload, first_difference_offset, parse_hex_fixture,
+        parse_usbpcap_hexdump_fixture,
     };
 
     const SETUP_0X50_290: &str = "21 09 50 03 00 00 22 01";
@@ -341,17 +455,11 @@ mod tests {
         50 02 14 ff 09 00 ff 00 00 00 ff ff ff ff 00 35 1e \
         21 09 50 03 00 00 22 01 \
         50 03 ff 00 00 ff 64 00 00 00 ff ff ff ff 01 35 1e";
-    const LIVE_STEADY_RED_PREFIX: &str = "50 02 ff 00 00";
-    const LIVE_STEADY_GREEN_PREFIX: &str = "50 02 00 ff 00";
-    const LIVE_STEADY_BLUE_PREFIX: &str = "50 02 00 00 ff";
-    const LIVE_BREATH_RED_PREFIX: &str = "50 04 ff 00 00";
-    const LIVE_OFF_RED_PREFIX: &str = "50 00 ff 00 00";
-
     struct LiveModeFixture {
         label: &'static str,
         bytes: &'static str,
         store_byte: u8,
-        full_payload_with_setup: Option<&'static str>,
+        preset: LiveJargbV2_1Preset,
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -363,33 +471,33 @@ mod tests {
     const LIVE_MODE_FIXTURES: [LiveModeFixture; 5] = [
         LiveModeFixture {
             label: "steady_red",
-            bytes: "21 09 50 03 00 00 22 01 50 02 ff 00 00",
+            bytes: include_str!("capture_compare_test2_fixture.txt"),
             store_byte: 0x01,
-            full_payload_with_setup: None,
+            preset: LiveJargbV2_1Preset::SteadyRed,
         },
         LiveModeFixture {
             label: "steady_green",
-            bytes: "21 09 50 03 00 00 22 01 50 02 00 ff 00",
+            bytes: include_str!("capture_compare_test3_fixture.txt"),
             store_byte: 0x01,
-            full_payload_with_setup: None,
+            preset: LiveJargbV2_1Preset::SteadyGreen,
         },
         LiveModeFixture {
             label: "steady_blue",
-            bytes: "21 09 50 03 00 00 22 01 50 02 00 00 ff",
+            bytes: include_str!("capture_compare_test4_fixture.txt"),
             store_byte: 0x01,
-            full_payload_with_setup: None,
+            preset: LiveJargbV2_1Preset::SteadyBlue,
         },
         LiveModeFixture {
             label: "breath_red",
-            bytes: "21 09 50 03 00 00 22 01 50 04 ff 00 00",
+            bytes: include_str!("capture_compare_test5_fixture.txt"),
             store_byte: 0x01,
-            full_payload_with_setup: None,
+            preset: LiveJargbV2_1Preset::BreathRed,
         },
         LiveModeFixture {
             label: "off_red_rgb_retained",
-            bytes: "21 09 50 03 00 00 22 01 50 00 ff 00 00",
+            bytes: include_str!("capture_compare_test6_fixture.txt"),
             store_byte: 0x01,
-            full_payload_with_setup: None,
+            preset: LiveJargbV2_1Preset::OffRetainedRed,
         },
     ];
 
@@ -500,7 +608,8 @@ mod tests {
     fn live_mode_fixtures_all_decode_as_0x50_290_reports() {
         for fixture in LIVE_MODE_FIXTURES {
             let extracted =
-                extract_0x50_payload(&parse_hex_fixture(fixture.bytes).unwrap()).unwrap();
+                extract_0x50_payload(&parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap())
+                    .unwrap();
             let setup = extracted
                 .setup
                 .unwrap_or_else(|| panic!("fixture {} missing USB setup", fixture.label));
@@ -517,60 +626,52 @@ mod tests {
                 "fixture {}",
                 fixture.label
             );
+            assert_eq!(
+                extracted.setup_offset,
+                Some(28),
+                "fixture {}",
+                fixture.label
+            );
+            assert_eq!(
+                extracted.payload.len(),
+                GEN1_REPORT_LENGTH,
+                "fixture {}",
+                fixture.label
+            );
             assert_eq!(extracted.payload[0], 0x50, "fixture {}", fixture.label);
+            assert_eq!(
+                extracted.payload[GEN1_REPORT_LENGTH - 1],
+                0x01,
+                "fixture {}",
+                fixture.label
+            );
             assert_eq!(fixture.store_byte, 0x01, "fixture {}", fixture.label);
         }
     }
 
     #[test]
-    fn checked_in_live_mode_fixtures_are_still_prefix_only_not_full_290_byte_dumps() {
+    fn full_live_mode_fixtures_now_extract_complete_290_byte_payloads() {
         for fixture in LIVE_MODE_FIXTURES {
             let extracted =
-                extract_0x50_payload(&parse_hex_fixture(fixture.bytes).unwrap()).unwrap();
+                extract_0x50_payload(&parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap())
+                    .unwrap();
 
-            assert!(
-                extracted.payload.len() < GEN1_REPORT_LENGTH,
-                "fixture {} unexpectedly became full-length without updating this test",
-                fixture.label
-            );
-            assert!(
-                fixture.full_payload_with_setup.is_none(),
-                "fixture {} unexpectedly has a full payload; enable the byte-for-byte test",
+            assert_eq!(
+                extracted.payload.len(),
+                GEN1_REPORT_LENGTH,
+                "fixture {}",
                 fixture.label
             );
         }
     }
 
     #[test]
-    #[ignore = "full 290-byte MSI Center payload dumps are not checked into this repo yet"]
     fn offline_live_builder_matches_full_captured_payloads_byte_for_byte() {
         for fixture in LIVE_MODE_FIXTURES {
-            let full_fixture = fixture.full_payload_with_setup.unwrap_or_else(|| {
-                panic!(
-                    "full 290-byte payload for {} is not checked into this repo yet",
-                    fixture.label
-                )
-            });
             let extracted =
-                extract_0x50_payload(&parse_hex_fixture(full_fixture).unwrap()).unwrap();
-            let expected_builder = match fixture.label {
-                "steady_red" => {
-                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyRed)
-                }
-                "steady_green" => {
-                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyGreen)
-                }
-                "steady_blue" => {
-                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::SteadyBlue)
-                }
-                "breath_red" => {
-                    build_live_confirmed_jargb_v2_1_0x50_payload(LiveJargbV2_1Preset::BreathRed)
-                }
-                "off_red_rgb_retained" => build_live_confirmed_jargb_v2_1_0x50_payload(
-                    LiveJargbV2_1Preset::OffRetainedRed,
-                ),
-                other => panic!("unexpected live fixture label: {other}"),
-            };
+                extract_0x50_payload(&parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap())
+                    .unwrap();
+            let expected_builder = build_live_confirmed_jargb_v2_1_0x50_payload(fixture.preset);
 
             assert_eq!(extracted.payload.len(), GEN1_REPORT_LENGTH);
             assert_eq!(expected_builder.len(), GEN1_REPORT_LENGTH);
@@ -595,7 +696,7 @@ mod tests {
     fn offline_live_builder_matches_steady_red_fixture_prefix_and_store_metadata() {
         assert_live_builder_prefix(
             LiveJargbV2_1Preset::SteadyRed,
-            LIVE_STEADY_RED_PREFIX,
+            &extract_fixture_prefix("steady_red"),
             0x02,
             [0xFF, 0x00, 0x00],
         );
@@ -605,7 +706,7 @@ mod tests {
     fn offline_live_builder_matches_steady_green_fixture_prefix_and_store_metadata() {
         assert_live_builder_prefix(
             LiveJargbV2_1Preset::SteadyGreen,
-            LIVE_STEADY_GREEN_PREFIX,
+            &extract_fixture_prefix("steady_green"),
             0x02,
             [0x00, 0xFF, 0x00],
         );
@@ -615,7 +716,7 @@ mod tests {
     fn offline_live_builder_matches_steady_blue_fixture_prefix_and_store_metadata() {
         assert_live_builder_prefix(
             LiveJargbV2_1Preset::SteadyBlue,
-            LIVE_STEADY_BLUE_PREFIX,
+            &extract_fixture_prefix("steady_blue"),
             0x02,
             [0x00, 0x00, 0xFF],
         );
@@ -625,7 +726,7 @@ mod tests {
     fn offline_live_builder_matches_breath_red_fixture_prefix_and_store_metadata() {
         assert_live_builder_prefix(
             LiveJargbV2_1Preset::BreathRed,
-            LIVE_BREATH_RED_PREFIX,
+            &extract_fixture_prefix("breath_red"),
             0x04,
             [0xFF, 0x00, 0x00],
         );
@@ -635,7 +736,7 @@ mod tests {
     fn offline_live_builder_matches_off_retained_red_fixture_prefix_and_store_metadata() {
         assert_live_builder_prefix(
             LiveJargbV2_1Preset::OffRetainedRed,
-            LIVE_OFF_RED_PREFIX,
+            &extract_fixture_prefix("off_red_rgb_retained"),
             0x00,
             [0xFF, 0x00, 0x00],
         );
@@ -644,21 +745,21 @@ mod tests {
     #[test]
     fn steady_red_green_and_blue_live_fixtures_map_to_mode_0x02_and_expected_rgb() {
         assert_eq!(
-            decode_mode_preview(LIVE_STEADY_RED_PREFIX),
+            decode_mode_preview(&extract_fixture_prefix("steady_red")),
             LiveModePreview {
                 mode: 0x02,
                 rgb: [0xFF, 0x00, 0x00],
             }
         );
         assert_eq!(
-            decode_mode_preview(LIVE_STEADY_GREEN_PREFIX),
+            decode_mode_preview(&extract_fixture_prefix("steady_green")),
             LiveModePreview {
                 mode: 0x02,
                 rgb: [0x00, 0xFF, 0x00],
             }
         );
         assert_eq!(
-            decode_mode_preview(LIVE_STEADY_BLUE_PREFIX),
+            decode_mode_preview(&extract_fixture_prefix("steady_blue")),
             LiveModePreview {
                 mode: 0x02,
                 rgb: [0x00, 0x00, 0xFF],
@@ -669,7 +770,7 @@ mod tests {
     #[test]
     fn breath_red_live_fixture_maps_to_mode_0x04_and_ff0000() {
         assert_eq!(
-            decode_mode_preview(LIVE_BREATH_RED_PREFIX),
+            decode_mode_preview(&extract_fixture_prefix("breath_red")),
             LiveModePreview {
                 mode: 0x04,
                 rgb: [0xFF, 0x00, 0x00],
@@ -679,7 +780,7 @@ mod tests {
 
     #[test]
     fn off_live_fixture_maps_to_mode_0x00_without_requiring_black_rgb() {
-        let preview = decode_mode_preview(LIVE_OFF_RED_PREFIX);
+        let preview = decode_mode_preview(&extract_fixture_prefix("off_red_rgb_retained"));
 
         assert_eq!(preview.mode, 0x00);
         assert_eq!(preview.rgb, [0xFF, 0x00, 0x00]);
@@ -690,7 +791,7 @@ mod tests {
     fn pcap_derived_fixture_stream_contains_no_static_gen2_or_advanced_shapes() {
         let mut bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
         for fixture in LIVE_MODE_FIXTURES {
-            bytes.extend(parse_hex_fixture(fixture.bytes).unwrap());
+            bytes.extend(parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap());
         }
         let absent_shapes = [
             ReportShape {
@@ -766,7 +867,7 @@ mod tests {
     fn jargb_v2_1_to_0x90_is_not_live_confirmed_by_capture_fixtures() {
         let mut bytes = parse_hex_fixture(FIXTURE_STREAM_WITH_LIVE_SETUPS).unwrap();
         for fixture in LIVE_MODE_FIXTURES {
-            bytes.extend(parse_hex_fixture(fixture.bytes).unwrap());
+            bytes.extend(parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap());
         }
 
         assert!(contains_report_shape(
@@ -809,6 +910,21 @@ mod tests {
         assert_eq!(&payload[2..5], &expected_rgb);
         assert_eq!(&payload[..fixture.len()], fixture.as_slice());
         assert_eq!(payload[GEN1_REPORT_LENGTH - 1], 0x01);
+    }
+
+    fn extract_fixture_prefix(label: &str) -> String {
+        let fixture = LIVE_MODE_FIXTURES
+            .iter()
+            .find(|fixture| fixture.label == label)
+            .unwrap_or_else(|| panic!("missing live fixture {label}"));
+        let extracted =
+            extract_0x50_payload(&parse_usbpcap_hexdump_fixture(fixture.bytes).unwrap()).unwrap();
+
+        extracted.payload[..5]
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     #[test]
