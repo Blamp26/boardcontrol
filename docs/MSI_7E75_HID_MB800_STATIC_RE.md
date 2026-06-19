@@ -190,6 +190,11 @@ fixtures and a byte-for-byte comparison path. The isolated offline live builder
 matches the extracted 290-byte MSI Center HID payloads byte-for-byte for steady
 red/green/blue, breath red, and off with retained red.
 
+An exact offline/dry-run CLI path now prints those same checked-in setup bytes
+and exact 290-byte HID payloads for the supported `JARGB_V2_1` live-confirmed
+cases. It is explicitly OFFLINE ONLY, DRY RUN ONLY, opens no devices, and
+performs no writes.
+
 ## Confirmed Vs Unknown
 
 Confirmed:
@@ -208,9 +213,11 @@ Confirmed:
 - Live `0x50` captures now confirm steady `0x02`, breath `0x04`, off `0x00`,
   and RGB prefixes `ff0000`, `00ff00`, and `0000ff`.
 - A local offline-only generator/check now exists for those live-confirmed
-  `JARGB_V2_1` `0x50`/290 payload prefixes.
+  `JARGB_V2_1` `0x50`/290 payloads.
 - Full local byte-for-byte equality now passes for the checked-in TEST 2
   through TEST 6 payload dumps.
+- An exact user-facing dry-run output path now prints those same checked-in
+  payloads without opening devices or performing writes.
 
 Unknown:
 

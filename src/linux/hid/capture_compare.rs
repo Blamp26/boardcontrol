@@ -3,6 +3,13 @@
 use crate::linux::hid::report::{GEN1_REPORT_ID, GEN1_REPORT_LENGTH};
 
 const USB_SETUP_LEN: usize = 8;
+pub const LIVE_0X50_SETUP_BYTES: [u8; USB_SETUP_LEN] =
+    [0x21, 0x09, 0x50, 0x03, 0x00, 0x00, 0x22, 0x01];
+const LIVE_TEST2_HEXDUMP: &str = include_str!("capture_compare_test2_fixture.txt");
+const LIVE_TEST3_HEXDUMP: &str = include_str!("capture_compare_test3_fixture.txt");
+const LIVE_TEST4_HEXDUMP: &str = include_str!("capture_compare_test4_fixture.txt");
+const LIVE_TEST5_HEXDUMP: &str = include_str!("capture_compare_test5_fixture.txt");
+const LIVE_TEST6_HEXDUMP: &str = include_str!("capture_compare_test6_fixture.txt");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CaptureCompareError {
@@ -116,6 +123,16 @@ impl LiveJargbV2_1Preset {
             Self::SteadyGreen => [0x00, 0xFF, 0x00],
             Self::SteadyBlue => [0x00, 0x00, 0xFF],
         }
+    }
+}
+
+pub const fn live_fixture_hexdump_for_preset(preset: LiveJargbV2_1Preset) -> &'static str {
+    match preset {
+        LiveJargbV2_1Preset::SteadyRed => LIVE_TEST2_HEXDUMP,
+        LiveJargbV2_1Preset::SteadyGreen => LIVE_TEST3_HEXDUMP,
+        LiveJargbV2_1Preset::SteadyBlue => LIVE_TEST4_HEXDUMP,
+        LiveJargbV2_1Preset::BreathRed => LIVE_TEST5_HEXDUMP,
+        LiveJargbV2_1Preset::OffRetainedRed => LIVE_TEST6_HEXDUMP,
     }
 }
 
@@ -371,6 +388,13 @@ pub fn build_live_confirmed_jargb_v2_1_0x50_payload(
 
     payload[GEN1_REPORT_LENGTH - 1] = 0x01;
     payload
+}
+
+pub fn extract_live_fixture_payload(
+    preset: LiveJargbV2_1Preset,
+) -> Result<ExtractedHidPayload, CaptureCompareError> {
+    let bytes = parse_usbpcap_hexdump_fixture(live_fixture_hexdump_for_preset(preset))?;
+    extract_0x50_payload(&bytes)
 }
 
 fn decode_setup(bytes: &[u8]) -> UsbSetupPacket {

@@ -9,6 +9,9 @@ use crate::linux::hid::dry_run::{
 };
 use crate::linux::hid::gate::{format_gate_report, read_hid_board_gate};
 use crate::linux::hid::inventory::{format_inventory_report, inventory_candidates};
+use crate::linux::hid::live_payload_dry_run::{
+    LivePayloadMode, build_exact_live_payload_dry_run, format_exact_live_payload_dry_run_report,
+};
 use crate::linux::hid::report::Ms7e75Zone;
 use crate::linux::proc_ioports::superio_ports_available;
 use crate::nct::allowlist::allowed_change_mask;
@@ -73,6 +76,10 @@ where
         return handle_linux_hid_dry_run(args);
     }
 
+    if hid_subcommand == "exact-live-dry-run" {
+        return handle_linux_hid_exact_live_dry_run(args);
+    }
+
     if hid_subcommand != "inventory" {
         return Err(Error::InvalidArgs(help()));
     }
@@ -114,6 +121,46 @@ where
     };
     println!("{}", format_dry_run_report(&result));
     Ok(())
+}
+
+fn handle_linux_hid_exact_live_dry_run<I>(args: I) -> Result<()>
+where
+    I: Iterator<Item = String>,
+{
+    println!("{}", build_linux_hid_exact_live_dry_run_output(args)?);
+    Ok(())
+}
+
+fn build_linux_hid_exact_live_dry_run_output<I>(mut args: I) -> Result<String>
+where
+    I: Iterator<Item = String>,
+{
+    let mut zone = None;
+    let mut mode = None;
+    let mut color = None;
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--zone" => zone = args.next(),
+            "--mode" => mode = args.next(),
+            "--color" => color = args.next(),
+            _ => return Err(Error::InvalidArgs(help())),
+        }
+    }
+
+    let zone_name = zone.ok_or_else(|| Error::InvalidArgs(help()))?;
+    let mode_name = mode.ok_or_else(|| Error::InvalidArgs(help()))?;
+    let color_value = color.ok_or_else(|| Error::InvalidArgs(help()))?;
+
+    let zone =
+        Ms7e75Zone::from_name(&zone_name).map_err(|err| Error::InvalidArgs(err.to_string()))?;
+    let mode =
+        LivePayloadMode::parse(&mode_name).map_err(|err| Error::InvalidArgs(err.to_string()))?;
+    let color = parse_rgb_hex(&color_value).map_err(|err| Error::InvalidArgs(err.to_string()))?;
+
+    let result = build_exact_live_payload_dry_run(zone, mode, color)
+        .map_err(|err| Error::InvalidArgs(err.to_string()))?;
+    Ok(format_exact_live_payload_dry_run_report(&result))
 }
 
 fn handle_doctor() -> Result<()> {
@@ -514,6 +561,8 @@ fn help() -> String {
         "    READ ONLY: DMI and inventory checks only; devices_opened=no writes_enabled=no support=unsupported/not enabled",
         "  msi-ml linux hid dry-run --zone JARGB_V2_1 --color ff0000",
         "    DRY RUN ONLY: in-memory report preview; devices_opened=no writes_performed=no support=unsupported/not enabled",
+        "  msi-ml linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000",
+        "    OFFLINE ONLY / DRY RUN ONLY: exact checked-in MSI Center 0x50/290 payload; devices_opened=no writes_enabled=no writes_performed=no",
         "  msi-ml nct plan-init-7a45",
         "  msi-ml nct plan-reset-led",
         "  msi-ml nct read-reg --board 7A45 --backend dev-port --ldn 0x09 --reg 0xE0 --confirm-read",
@@ -528,7 +577,10 @@ fn help() -> String {
 mod tests {
     use crate::nct::plan::{NctPlanStep, RmwPlan};
 
-    use super::{format_plan_step, help, parse_hid_gate_status, parse_u8_value};
+    use super::{
+        build_linux_hid_exact_live_dry_run_output, format_plan_step, help, parse_hid_gate_status,
+        parse_u8_value,
+    };
 
     #[test]
     fn parse_u8_accepts_hex_and_decimal() {
@@ -602,6 +654,53 @@ mod tests {
     fn help_includes_linux_hid_dry_run_command() {
         assert!(help().contains("msi-ml linux hid dry-run"));
         assert!(help().contains("DRY RUN ONLY: in-memory report preview"));
+    }
+
+    #[test]
+    fn help_includes_exact_live_dry_run_command() {
+        assert!(help().contains("msi-ml linux hid exact-live-dry-run"));
+        assert!(help().contains("OFFLINE ONLY / DRY RUN ONLY"));
+    }
+
+    #[test]
+    fn exact_live_dry_run_cli_output_contains_required_safety_fields() {
+        let output = build_linux_hid_exact_live_dry_run_output(
+            vec![
+                "--zone".to_string(),
+                "JARGB_V2_1".to_string(),
+                "--mode".to_string(),
+                "steady".to_string(),
+                "--color".to_string(),
+                "ff0000".to_string(),
+            ]
+            .into_iter(),
+        )
+        .unwrap();
+
+        assert!(output.contains("status = DRY RUN ONLY"));
+        assert!(output.contains("devices_opened = no"));
+        assert!(output.contains("writes_enabled = no"));
+        assert!(output.contains("writes_performed = no"));
+        assert!(output.contains("setup_bytes = 21 09 50 03 00 00 22 01"));
+        assert!(output.contains("fixture_match = yes"));
+    }
+
+    #[test]
+    fn exact_live_dry_run_cli_rejects_unsupported_color_without_fallback() {
+        let error = build_linux_hid_exact_live_dry_run_output(
+            vec![
+                "--zone".to_string(),
+                "JARGB_V2_1".to_string(),
+                "--mode".to_string(),
+                "breath".to_string(),
+                "--color".to_string(),
+                "00ff00".to_string(),
+            ]
+            .into_iter(),
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("unsupported color"));
     }
 
     #[test]

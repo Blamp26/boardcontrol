@@ -58,7 +58,20 @@ cargo run -- linux hid inventory
 cargo run -- linux hid gate
 cargo run -- linux hid dry-run --zone JRGB1 --color ff0000
 cargo run -- linux hid dry-run --zone JARGB_V2_1 --color ff0000
+cargo run -- linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000
 ```
+
+Exact live dry-run scope is intentionally narrow and offline-only. The command
+supports only the checked-in live-confirmed `JARGB_V2_1` payloads:
+
+- steady `ff0000`
+- steady `00ff00`
+- steady `0000ff`
+- breath `ff0000`
+- off with retained red `ff0000`
+
+It prints the exact setup bytes plus the exact 290-byte HID payload that matches
+the checked-in USBPcap fixtures. It opens no devices and performs no writes.
 
 Expected wording:
 
@@ -67,12 +80,22 @@ Expected wording:
 - `writes_performed = no`
 - `support = unsupported/not enabled`
 
+For `exact-live-dry-run`, the output also includes:
+
+- `setup_bytes = 21 09 50 03 00 00 22 01`
+- `report_id = 0x50`
+- `payload_len = 290`
+- `fixture_match = yes`
+
 Forbidden here:
 
 - `write`, `apply`, or `set` commands
 - `write-once`
 - HID `SetFeature`
 - general Linux lighting support claims
+
+Even exact dry-run payload output is documentation/output-only evidence. Phase 4
+remains on hold and hardware writes are still not approved.
 
 Helpful references:
 

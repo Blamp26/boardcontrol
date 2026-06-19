@@ -22,6 +22,8 @@ Implemented:
   payloads
 - full TEST 2 through TEST 6 USBPcap fixtures with byte-for-byte offline
   equality checks
+- exact offline/dry-run CLI output for the checked-in live `JARGB_V2_1`
+  `0x50`/290 payloads
 - explicit Phase 4 hold notes in the design, risk, and implementation-plan docs
 
 Validated:
@@ -68,6 +70,8 @@ Explicitly held:
   live-confirmed `JARGB_V2_1` `0x50`/290 payloads.
 - Full local byte-for-byte equality now passes for the checked-in TEST 2
   through TEST 6 payload dumps.
+- An exact offline/dry-run CLI path now prints those checked-in setup bytes and
+  full 290-byte payloads for the supported live-confirmed `JARGB_V2_1` cases.
 - This evidence does not approve Linux HID writes.
 
 ## 5. Linux Implementation State
@@ -95,6 +99,7 @@ cargo run -- linux hid inventory
 cargo run -- linux hid gate
 cargo run -- linux hid dry-run --zone JRGB1 --color ff0000
 cargo run -- linux hid dry-run --zone JARGB_V2_1 --color ff0000
+cargo run -- linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000
 ```
 
 These commands stay read-only. They do not open HID devices or transmit

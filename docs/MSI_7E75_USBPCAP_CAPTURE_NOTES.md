@@ -187,6 +187,16 @@ extracted 290-byte HID payloads byte-for-byte for:
 - breath red
 - off with retained red
 
+A new user-facing exact dry-run CLI path now prints that same checked-in setup
+bytes plus the exact 290-byte payload for the supported live-confirmed cases:
+
+```text
+msi-ml linux hid exact-live-dry-run --zone JARGB_V2_1 --mode steady --color ff0000
+```
+
+This path is explicitly OFFLINE ONLY and DRY RUN ONLY. It opens no devices and
+performs no writes.
+
 The current embedded fixtures use the documented frame starts:
 
 | Frame | Embedded fixture bytes | Store byte metadata | Source form |
@@ -212,6 +222,7 @@ Known matches:
 | HID payload bytes `[2..4]` | Observed live RGB prefix: red `ff0000`, green `00ff00`, blue `0000ff`. |
 | Offline local generator/check | Builds the observed `JARGB_V2_1` `0x50`/290 payload for steady red/green/blue, breath red, and off with retained red. |
 | Full byte-for-byte repo status | Passes locally for the checked-in TEST 2 through TEST 6 full dumps after extracting the HID payload after the setup bytes. |
+| Exact dry-run CLI status | Passes locally for the supported cases and prints the exact checked-in setup bytes plus 290-byte HID payload; no device opened, no write performed. |
 
 Known differences in the available prefixes:
 
